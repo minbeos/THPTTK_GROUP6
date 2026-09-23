@@ -49,14 +49,18 @@
       <input type="hidden" name="latitude" id="latitude" value="">
       <input type="hidden" name="longitude" id="longitude" value="">
 
-      <!-- Cột mốc nhận diện -->
-      <input 
-        type="text" 
-        name="landmark" 
-        id="landmark" 
-        placeholder="Mô tả cột mốc dễ tìm (VD: Đối diện cây xăng, gần ngã tư...)" 
-        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-600 focus:ring-1 focus:ring-red-500 focus:outline-none"
-      />
+      <div class="flex items-center gap-1.5 flex-wrap pt-1">
+        <span class="text-[10px] text-slate-500 font-semibold">Gợi ý nhanh:</span>
+        <button type="button" onclick="setPresetLoc('120 Hoàng Minh Thảo, Liên Chiểu', 16.0725, 108.1520)" class="text-[10px] bg-white border border-slate-300 hover:border-red-500 text-slate-700 px-2 py-0.5 rounded-lg shadow-2xs">
+          Hoàng Minh Thảo (~1.2km)
+        </button>
+        <button type="button" onclick="setPresetLoc('54 Nguyễn Lương Bằng, Hòa Khánh', 16.0750, 108.1530)" class="text-[10px] bg-white border border-slate-300 hover:border-red-500 text-slate-700 px-2 py-0.5 rounded-lg shadow-2xs">
+          ĐH Bách Khoa (~0.6km)
+        </button>
+        <button type="button" onclick="setPresetLoc('Đỉnh đèo Hải Vân (Ngoài 10km)', 16.1900, 108.1300)" class="text-[10px] bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 px-2 py-0.5 rounded-lg font-medium" title="Thử luồng ngoại lệ 2a: Ngoài 10km">
+          Đèo Hải Vân (>10km)
+        </button>
+      </div>
     </div>
 
     <!-- 2. Loại phương tiện gặp sự cố -->
@@ -218,6 +222,12 @@
 
 {% block extra_js %}
 <script>
+  function setPresetLoc(address, lat, lng) {
+    document.getElementById('locationInput').value = address;
+    document.getElementById('latitude').value = lat;
+    document.getElementById('longitude').value = lng;
+  }
+
   // 1. Tự động lấy vị trí GPS từ trình duyệt
   document.getElementById('btnGetGPS').addEventListener('click', function() {
     const locInput = document.getElementById('locationInput');

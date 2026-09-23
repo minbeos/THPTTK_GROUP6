@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}Chi Tiết Yêu Cầu Cứu Hộ #{{ rescue_req.code }}{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col bg-slate-50 pb-8">
+
+  <!-- Header thanh tác vụ -->
+  <div class="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+    <div class="flex items-center gap-2.5">
+      <a href="{% url 'rescuer_dashboard' %}" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition">
+        <i class="fa-solid fa-arrow-left text-xs"></i>
+      </a>
+      <div>
+        <h2 class="font-extrabold text-sm text-slate-800 leading-tight">Yêu Cầu #{{ rescue_req.code }}</h2>
+        <span class="text-[10px] text-slate-400 font-medium">Được phát lúc {{ rescue_req.created_at|date:"H:i - d/m/Y" }}</span>
+      </div>
+    </div>
+
+    <span class="bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+      <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+      {{ rescue_req.get_status_display }}
+    </span>
+  </div>
+
+  <div class="p-4 space-y-4">
+
+    <!-- 1. Thẻ Thông Tin Sự Cố & Vị Trí (Main flow 5, 6) -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+      <div class="flex items-start justify-between">
+        <div>
+          <span class="text-[10px] uppercase font-bold text-red-600 tracking-wider">Thông tin sự cố</span>
+          <h3 class="text-base font-extrabold text-slate-900 mt-0.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-wrench text-amber-500"></i>
+            {{ rescue_req.issue_type }}
+          </h3>
+        </div>
+        <span class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-xl">
+          <i class="fa-solid fa-motorcycle text-slate-500"></i> {{ rescue_req.vehicle_type }}
+        </span>
+      </div>
+
+      <!-- Vị trí & Khoảng cách tính toán -->
+      <div class="bg-red-50/70 border border-red-200 rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-location-dot text-red-600"></i>
+            <span>Vị trí sự cố:</span>
+          </span>
+          <span class="bg-red-600 text-white font-black text-[11px] px-2 py-0.5 rounded-lg shadow-sm">
+            Cách bạn ~{{ distance_km }} km
+          </span>
+        </div>
+        <p class="text-xs text-slate-700 font-medium leading-relaxed">
+          {{ rescue_req.location_address }}
+        </p>
+        <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-red-200/60 font-mono">
+          <span>Tọa độ GPS: {{ rescue_req.latitude|floatformat:4 }}, {{ rescue_req.longitude|floatformat:4 }}</span>
+          <span class="text-red-700 font-bold">Dự kiến: ~{{ eta_minutes }} phút tới</span>
+        </div>
+      </div>
+
+      <!-- Mô tả chi tiết từ người gặp nạn -->
+      {% if rescue_req.description %}
+      <div class="text-xs text-slate-600 bg-slate-50 rounded-xl p-3 border border-slate-200">
+        <strong class="text-slate-700 block mb-1">Mô tả thêm của chủ xe:</strong>
+        {{ rescue_req.description }}
+      </div>
+      {% endif %}
+
+      <!-- Thỏa thuận chi phí đề xuất -->
+      <div class="flex items-center justify-between pt-1">
+        <span class="text-xs text-slate-500">Chi phí hỗ trợ đề xuất:</span>
+        <span class="text-base font-extrabold text-red-600">{{ rescue_req.proposed_fee }}</span>
+      </div>
+    </div>
+
+    <!-- 2. Hồ Sơ Người Gặp Sự Cố (Alternative flow 6a) -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Hồ sơ người gặp sự cố</span>
+        <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+          <i class="fa-solid fa-shield-halved"></i> Đã xác thực SĐT
+        </span>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <img 
+            src="{{ victim_profile.avatar_url|default:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80' }}" 
+            alt="Avatar Chủ Xe" 
+            class="w-12 h-12 rounded-full object-cover border-2 border-slate-200"
+          />
+          <div>
+            <h4 class="font-extrabold text-sm text-slate-800">{{ rescue_req.victim.get_full_name|default:rescue_req.victim.username }}</h4>
+            <p class="text-xs text-slate-500 mt-0.5">
+              <i class="fa-solid fa-phone text-slate-400"></i> {{ victim_profile.phone|default:'0912345678' }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Nút gọi điện nhanh trao đổi phương án (Main flow 7) -->
+        <a 
+          href="tel:{{ victim_profile.phone|default:'0912345678' }}" 
+          class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-sm shadow-sm transition"
+          title="Gọi trực tiếp thống nhất phương án"
+        >
+          <i class="fa-solid fa-phone"></i>
+        </a>
+      </div>
+
+      <!-- Thống kê tin cậy của chủ xe -->
+      <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-center text-xs">
+        <div class="bg-slate-50 rounded-xl p-2">
+          <span class="text-[10px] text-slate-400 block">Số lần yêu cầu cứu hộ</span>
+          <strong class="text-slate-800 font-bold">{{ victim_stats.total_requests }} lần</strong>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-2">
+          <span class="text-[10px] text-slate-400 block">Độ uy tín thành viên</span>
+          <strong class="text-emerald-600 font-bold">100% Tin cậy</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Kênh Trao Đổi Tin Nhắn Thống Nhất Phương Án (Main flow 7) -->
+    <a 
+      href="{% url 'support_chat' %}?request_id={{ rescue_req.id }}" 
+      class="bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-2xl p-3 flex items-center justify-between text-blue-700 transition"
+    >
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm">
+          <i class="fa-regular fa-comments"></i>
+        </div>
+        <div>
+          <span class="font-bold text-xs block leading-tight">Nhắn tin trao đổi trước với chủ xe</span>
+          <span class="text-[10px] text-blue-500">Thống nhất đồ nghề, phụ tùng và phương án</span>
+        </div>
+      </div>
+      <i class="fa-solid fa-chevron-right text-xs text-blue-400"></i>
+    </a>
+
+    <!-- 4. RẼ NHÁNH QUYẾT ĐỊNH: HỖ TRỢ? (YES / NO) -->
+    <div class="pt-2 space-y-2.5">
+      <div class="text-center">
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          Quyết định tiếp nhận hỗ trợ?
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <!-- Rẽ nhánh NO: Từ chối hỗ trợ (Alternative flow 8a) -->
+        <form method="POST" action="{% url 'reject_request' rescue_req.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="reason" value="Thợ bận hoặc đang ở quá xa vị trí này">
+          <button 
+            type="submit" 
+            onclick="return confirm('Bạn có chắc muốn TỪ CHỐI ca cứu hộ này? Hệ thống sẽ tiếp tục chuyển yêu cầu cho người khác.')"
+            class="w-full py-3 px-4 rounded-2xl border-2 border-slate-300 text-slate-600 hover:bg-slate-100 active:scale-[0.98] font-bold text-xs flex items-center justify-center gap-1.5 transition"
+          >
+            <i class="fa-solid fa-xmark text-slate-400"></i>
+            <span>Từ Chối (NO)</span>
+          </button>
+        </form>
+
+        <!-- Rẽ nhánh YES: Chấp nhận hỗ trợ (Main flow 8 -> 12) -->
+        <form method="POST" action="{% url 'accept_request' rescue_req.id %}">
+          {% csrf_token %}
+          <button 
+            type="submit" 
+            class="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition"
+          >
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Chấp Nhận (YES)</span>
+          </button>
+        </form>
+      </div>
+
+      <p class="text-[10px] text-center text-slate-400 leading-tight">
+        Khi chọn "Chấp nhận", hệ thống sẽ gán bạn cho ca cứu hộ, cập nhật trạng thái "Đang hỗ trợ", thông báo cho người gặp nạn và mở bản đồ lộ trình dẫn đường.
+      </p>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

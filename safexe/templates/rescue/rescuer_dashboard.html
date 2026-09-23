@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}SafeXe - Tiếp Nhận & Xử Lý Yêu Cầu Cứu Hộ{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col bg-slate-50 pb-6">
+
+  <!-- 1. Banner Trạng Thái Người Cứu Hộ & Công Tắc Sẵn Sàng -->
+  <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <img 
+            src="{{ profile.avatar_url }}" 
+            alt="Avatar Thợ" 
+            class="w-12 h-12 rounded-full object-cover border-2 {% if profile.rescuer_status == 'READY' %}border-emerald-400{% elif profile.rescuer_status == 'BUSY' %}border-amber-400{% else %}border-slate-500{% endif %}"
+          />
+          <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900 flex items-center justify-center text-[8px] font-bold {% if profile.rescuer_status == 'READY' %}bg-emerald-500 text-white{% elif profile.rescuer_status == 'BUSY' %}bg-amber-500 text-white{% else %}bg-slate-400 text-white{% endif %}">
+            <i class="fa-solid {% if profile.rescuer_status == 'READY' %}fa-check{% elif profile.rescuer_status == 'BUSY' %}fa-wrench{% else %}fa-moon{% endif %}"></i>
+          </span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="font-bold text-sm leading-tight">{{ profile.user.get_full_name|default:profile.user.username }}</h2>
+            <span class="bg-amber-400/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded">
+              <i class="fa-solid fa-star text-amber-300"></i> {{ profile.rating_avg }}
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-300 mt-0.5">
+            {{ profile.vehicle_type }} • <span class="font-mono text-amber-200">{{ profile.vehicle_plate }}</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Form đổi trạng thái Sẵn sàng / Tạm nghỉ -->
+      <form method="POST" action="{% url 'toggle_rescuer_status' %}" class="flex items-center">
+        {% csrf_token %}
+        {% if profile.rescuer_status == 'READY' %}
+          <input type="hidden" name="rescuer_status" value="OFFLINE">
+          <button type="submit" class="bg-emerald-500/20 border border-emerald-500 text-emerald-300 hover:bg-emerald-500/30 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Sẵn sàng nhận ca</span>
+          </button>
+        {% elif profile.rescuer_status == 'BUSY' %}
+          <input type="hidden" name="rescuer_status" value="READY">
+          <button type="submit" class="bg-amber-500/20 border border-amber-500 text-amber-300 hover:bg-amber-500/30 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Đang hỗ trợ (Bận)</span>
+          </button>
+        {% else %}
+          <input type="hidden" name="rescuer_status" value="READY">
+          <button type="submit" class="bg-slate-700 border border-slate-600 text-slate-300 hover:bg-slate-600 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+            <span>Tạm nghỉ (Bật lại)</span>
+          </button>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- Thanh thông số cứu hộ -->
+    <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-700/60 text-center">
+      <div class="bg-white/5 rounded-xl p-1.5">
+        <span class="text-[10px] text-slate-400 block">Đã cứu hộ</span>
+        <span class="text-xs font-black text-amber-300">{{ profile.total_rescues }} ca</span>
+      </div>
+      <div class="bg-white/5 rounded-xl p-1.5">
+        <span class="text-[10px] text-slate-400 block">Bán kính quét</span>
+        <span class="text-xs font-black text-white">{{ radius_km }} km</span>
+      </div>
+      <div class="bg-white/5 rounded-xl p-1.5">
+        <span class="text-[10px] text-slate-400 block">Tọa độ GPS</span>
+        <span class="text-[10px] font-mono text-emerald-400 font-semibold truncate block">16.078, 108.158</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Danh sách Ca Đang Hỗ Trợ (Nếu có) -->
+  {% if active_rescues %}
+  <div class="p-3">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+        <i class="fa-solid fa-person-digging text-amber-500"></i> Ca bạn đang xử lý
+      </h3>
+      <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">{{ active_rescues.count }} ca</span>
+    </div>
+
+    <div class="space-y-2">
+      {% for active in active_rescues %}
+      <div class="bg-white border-2 border-amber-300 rounded-2xl p-3.5 shadow-sm space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="bg-red-600 text-white font-extrabold text-[11px] px-2 py-0.5 rounded-lg">#{{ active.code }}</span>
+            <span class="text-xs font-bold text-slate-800">{{ active.issue_type }}</span>
+          </div>
+          <span class="bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
+            {{ active.get_status_display }}
+          </span>
+        </div>
+
+        <p class="text-xs text-slate-600 flex items-start gap-1.5">
+          <i class="fa-solid fa-location-dot text-red-500 mt-0.5"></i>
+          <span>{{ active.location_address }}</span>
+        </p>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <div class="text-[11px] text-slate-500">
+            Chủ xe: <strong>{{ active.victim.get_full_name|default:active.victim.username }}</strong>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="{% url 'support_chat' %}?request_id={{ active.id }}" class="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 flex items-center gap-1">
+              <i class="fa-regular fa-comment"></i> Chat
+            </a>
+            <a href="{% url 'live_tracking' %}?request_id={{ active.id }}" class="px-3 py-1.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 flex items-center gap-1 shadow-sm">
+              <i class="fa-solid fa-location-crosshairs"></i> Dẫn đường
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 3. Radar Quét Yêu Cầu Cứu Hộ Trong Bán Kính 10 km (Main flow 3, 4, 5) -->
+  <div class="p-3">
+    <div class="flex items-center justify-between mb-2.5">
+      <div>
+        <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+          <i class="fa-solid fa-tower-broadcast text-red-600 animate-pulse"></i> 
+          Yêu cầu cứu hộ gần bạn (&le; 10 km)
+        </h3>
+        <p class="text-[10px] text-slate-500 mt-0.5">Tự động quét trong bán kính 10 km từ vị trí thợ</p>
+      </div>
+      <span class="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200">
+        {{ nearby_requests|length }} yêu cầu mới
+      </span>
+    </div>
+
+    {% if nearby_requests %}
+      <div class="space-y-3">
+        {% for req in nearby_requests %}
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:border-red-400 hover:shadow-md transition">
+          
+          <!-- Dòng mã ca & Khoảng cách -->
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-1.5">
+              <span class="bg-slate-900 text-white font-extrabold text-[11px] px-2 py-0.5 rounded-lg">#{{ req.code }}</span>
+              <span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                <i class="fa-solid fa-route"></i> Cách {{ req.distance_km }} km
+              </span>
+            </div>
+            <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+              <i class="fa-regular fa-clock"></i> ~{{ req.eta_minutes }} phút tới
+            </span>
+          </div>
+
+          <!-- Chi tiết sự cố -->
+          <div class="space-y-1 mb-3">
+            <h4 class="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+              {{ req.issue_type }}
+            </h4>
+            <div class="flex items-center gap-2 text-[11px] text-slate-500">
+              <span><i class="fa-solid fa-motorcycle text-slate-400"></i> {{ req.vehicle_type }}</span>
+              <span>•</span>
+              <span class="text-red-600 font-bold">Phí đề xuất: {{ req.proposed_fee }}</span>
+            </div>
+            <p class="text-xs text-slate-600 flex items-start gap-1.5 mt-1">
+              <i class="fa-solid fa-location-dot text-red-500 mt-0.5 shrink-0"></i>
+              <span class="line-clamp-2">{{ req.location_address }}</span>
+            </p>
+          </div>
+
+          <!-- Nút hành động nhanh: Xem chi tiết & Chấp nhận -->
+          <div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+            <!-- Nút xem chi tiết (Flow 6 & 6a) -->
+            <a 
+              href="{% url 'request_detail' req.id %}" 
+              class="flex-1 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs text-center flex items-center justify-center gap-1 transition"
+            >
+              <i class="fa-regular fa-eye"></i>
+              <span>Xem chi tiết & Hồ sơ</span>
+            </a>
+
+            <!-- Nút chấp nhận nhanh (Flow 8) -->
+            <form method="POST" action="{% url 'accept_request' req.id %}" class="flex-1">
+              {% csrf_token %}
+              <button 
+                type="submit" 
+                class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs text-center shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
+              >
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Chấp Nhận Ngay</span>
+              </button>
+            </form>
+          </div>
+
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center space-y-2">
+        <div class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl">
+          <i class="fa-solid fa-radar animate-spin"></i>
+        </div>
+        <h4 class="font-bold text-sm text-slate-700">Chưa có yêu cầu cứu hộ mới</h4>
+        <p class="text-xs text-slate-500 max-w-xs mx-auto">
+          Hệ thống đang liên tục quét trong bán kính 10 km. Khi người gặp nạn phát tín hiệu SOS, yêu cầu sẽ xuất hiện tại đây ngay lập tức.
+        </p>
+        <div class="pt-2">
+          <a href="{% url 'switch_user' 'nan_nhan' %}" class="inline-flex items-center gap-1.5 text-xs text-red-600 font-bold hover:underline">
+            <i class="fa-solid fa-user-plus"></i> Đổi sang Người gặp nạn để tạo thử yêu cầu SOS
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- 4. Lịch Sử Thông Báo (Main flow 3 & 11) -->
+  <div class="p-3">
+    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+      <i class="fa-regular fa-bell text-slate-500"></i> Thông báo hệ thống
+    </h3>
+    <div class="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden shadow-sm">
+      {% for notif in notifications %}
+      <div class="p-3 hover:bg-slate-50 transition text-xs">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-bold text-slate-800">{{ notif.title }}</span>
+          <span class="text-[10px] text-slate-400">{{ notif.created_at|timesince }} trước</span>
+        </div>
+        <p class="text-slate-600 text-[11px] leading-relaxed">{{ notif.content }}</p>
+      </div>
+      {% empty %}
+      <div class="p-4 text-center text-xs text-slate-400">Chưa có thông báo nào</div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
