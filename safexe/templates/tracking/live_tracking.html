@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block title %}SafeXe - Theo Dõi Vị Trí Cứu Hộ Thời Gian Thực{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Hiệu ứng radar quét sóng định vị */
+  .radar-pulse {
+    position: relative;
+  }
+  .radar-pulse::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    background: rgba(239, 68, 68, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: radar-expand 2s infinite ease-out;
+    pointer-events: none;
+  }
+  @keyframes radar-expand {
+    0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col relative bg-slate-100">
+
+  <!-- 1. Thanh Tiến Trình Cứu Hộ (Stepper 5 Bước) -->
+  <div class="bg-white border-b border-slate-200 px-4 py-3 shadow-sm z-10">
+    <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-1">
+      <span class="text-emerald-600 flex items-center gap-1">
+        <i class="fa-solid fa-circle-check"></i> Đã nhận ca
+      </span>
+      <span class="text-red-600 flex items-center gap-1">
+        <span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+        Đang di chuyển
+      </span>
+      <span>Đã tới</span>
+      <span>Hoàn tất</span>
+    </div>
+
+    <!-- Thanh tiến trình vạch kẻ -->
+    <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+      <div class="bg-gradient-to-r from-emerald-500 to-red-600 h-1.5 rounded-full w-[45%] transition-all duration-500"></div>
+    </div>
+  </div>
+
+  <!-- 2. Khung Bản Đồ Thời Gian Thực (Live GPS Map Container) -->
+  <div class="flex-1 relative bg-slate-200 min-h-[360px] flex items-center justify-center overflow-hidden">
+    
+    <!-- Lưới bản đồ mô phỏng (Map Grid Mockup) -->
+    <div class="absolute inset-0 opacity-40 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]"></div>
+    
+    <!-- Tuyến đường nét đứt nối 2 điểm (SVG Road Route) -->
+    <svg class="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 90 280 Q 180 190 290 120" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="6,6" class="animate-pulse" />
+    </svg>
+
+    <!-- Điểm 1: Vị trí của Người Gặp Nạn (Bạn) -->
+    <div class="absolute bottom-20 left-16 flex flex-col items-center radar-pulse">
+      <div class="bg-red-600 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white z-10">
+        <i class="fa-solid fa-person-falling-burst text-sm"></i>
+      </div>
+      <span class="bg-slate-900/90 text-white text-[10px] px-2 py-0.5 rounded-md font-semibold mt-1 shadow-md whitespace-nowrap">
+        Vị trí của bạn
+      </span>
+    </div>
+
+    <!-- Điểm 2: Vị trí của Thợ Cứu Hộ đang di chuyển tới -->
+    <div class="absolute top-20 right-16 flex flex-col items-center">
+      <div class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-2 border-white animate-bounce">
+        <i class="fa-solid fa-motorcycle text-base"></i>
+      </div>
+      <span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold mt-1 shadow-md whitespace-nowrap">
+        Thợ Nguyễn Văn Hùng
+      </span>
+    </div>
+
+    <!-- Thẻ khoảng cách nổi ở giữa tuyến đường -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm border border-slate-300 px-3 py-1 rounded-full shadow-lg text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+      <i class="fa-solid fa-route text-red-500"></i>
+      <span>Còn 1.2 km</span>
+    </div>
+
+    <!-- Nút điều khiển bản đồ -->
+    <div class="absolute top-3 right-3 flex flex-col gap-2 z-10">
+      <button type="button" class="w-9 h-9 bg-white rounded-xl shadow-md flex items-center justify-center text-slate-700 hover:text-red-600 text-xs transition" title="Định vị lại tâm bản đồ">
+        <i class="fa-solid fa-crosshairs"></i>
+      </button>
+      <button type="button" class="w-9 h-9 bg-white rounded-xl shadow-md flex items-center justify-center text-slate-700 hover:text-red-600 text-xs transition" title="Lớp bản đồ giao thông">
+        <i class="fa-solid fa-layer-group"></i>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- 3. Thẻ Nổi Trạng Thái Di Chuyển & Ước Tính Thời Gian (Floating Live Card) -->
+  <div class="p-3 bg-white border-t border-slate-200 rounded-t-3xl shadow-2xl -mt-4 relative z-20 space-y-3">
+    
+    <!-- ETA (Thời gian dự kiến đến) -->
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-lg font-bold">
+          <i class="fa-solid fa-stopwatch"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-base font-extrabold text-slate-800">Dự kiến ~5 phút</span>
+            <span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+              Đang tới
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500">Thợ đang di chuyển trên đường Hoàng Thị Loan</p>
+        </div>
+      </div>
+
+      <!-- Nút chia sẻ vị trí cho người thân -->
+      <button type="button" class="text-slate-400 hover:text-slate-600 p-2" title="Chia sẻ theo dõi cho người thân">
+        <i class="fa-solid fa-share-nodes text-base"></i>
+      </button>
+    </div>
+
+    <!-- Thông tin người hỗ trợ & Xe -->
+    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <img 
+          src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80" 
+          alt="Avatar Thợ" 
+          class="w-10 h-10 rounded-full object-cover border border-red-500"
+        />
+        <div>
+          <h3 class="font-bold text-slate-800 text-xs">Nguyễn Văn Hùng</h3>
+          <p class="text-[10px] text-slate-500">Xe Wave Alpha đỏ • <strong class="text-slate-700">43-C1 123.45</strong></p>
+        </div>
+      </div>
+
+      <!-- Cặp nút Gọi & Nhắn tin nhanh -->
+      <div class="flex items-center gap-1.5">
+        <a 
+          href="tel:0905123456" 
+          class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-xs transition"
+          title="Gọi điện thoại"
+        >
+          <i class="fa-solid fa-phone"></i>
+        </a>
+        <a 
+          href="{% url 'support_chat' %}" 
+          class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center text-xs transition"
+          title="Nhắn tin trao đổi"
+        >
+          <i class="fa-solid fa-comment-dots"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Cụm nút hành động hoàn tất & báo cáo -->
+    <div class="flex items-center gap-2 pt-1">
+      <a 
+        href="{% url 'rating_feedback' %}" 
+        class="flex-1 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition"
+      >
+        <i class="fa-solid fa-circle-check"></i>
+        <span>Đã Gặp Thợ & Hoàn Tất</span>
+      </a>
+
+      <button 
+        type="button" 
+        onclick="confirm('Bạn có chắc muốn báo cáo khẩn cấp hoặc hủy ca cứu hộ này?')" 
+        class="px-3 py-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold transition"
+      >
+        Hủy Ca
+      </button>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Script giả lập cập nhật khoảng cách vị trí thời gian thực (Polling hoặc WebSocket)
+  console.log("SafeXe Live GPS Tracking initialized.");
+</script>
+{% endblock %}

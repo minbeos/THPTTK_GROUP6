@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>{% block title %}SafeXe - Nền Tảng Cứu Hộ Giao Thông Khẩn Cấp{% endblock %}</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              DEFAULT: '#ff5e14',
+              hover: '#e6520f',
+              dark: '#121214',
+              card: '#1c1c20',
+              border: '#2a2a30',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Thanh cuộn mượt và ẩn thanh cuộn mặc định trên mobile */
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex justify-center p-0 sm:p-4">
+
+  <!-- Mobile Screen Container -->
+  <div class="w-full max-w-md bg-white min-h-screen sm:min-h-0 sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-slate-200/80">
+    
+    <!-- Top App Header -->
+    {% block header %}
+    <header class="bg-red-600 text-white px-4 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
+      <div class="flex items-center gap-2.5">
+        <a href="{% url 'rescue_create' %}" class="flex items-center gap-2 hover:opacity-90 transition">
+          <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-black text-amber-300 text-base shadow-sm">
+            <i class="fa-solid fa-truck-medical"></i>
+          </div>
+          <div>
+            <span class="font-extrabold text-base tracking-tight block leading-tight">Safe<span class="text-amber-300">Xe</span></span>
+            <span class="text-[10px] text-red-100 font-medium block leading-none">Cứu hộ 24/7</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Quick action badge & User Profile link -->
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1 bg-white/15 px-2.5 py-1 rounded-full text-[11px] font-medium text-white">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Trực tuyến
+        </span>
+        <a href="{% url 'login' %}" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs text-white transition" title="Tài khoản">
+          <i class="fa-regular fa-user"></i>
+        </a>
+      </div>
+    </header>
+    {% endblock %}
+
+    <!-- Flash Messages (Django Messages Framework) -->
+    {% if messages %}
+    <div class="p-3 space-y-2 z-20">
+      {% for message in messages %}
+      <div class="px-4 py-2.5 rounded-xl text-xs font-medium flex items-center justify-between shadow-sm 
+        {% if message.tags == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-200
+        {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+        {% else %}bg-amber-50 text-amber-800 border border-amber-200{% endif %}">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-emerald-600{% elif message.tags == 'error' %}fa-circle-exclamation text-red-600{% else %}fa-circle-info text-amber-600{% endif %}"></i>
+          <span>{{ message }}</span>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 ml-2">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col">
+      {% block content %}
+      {# Nội dung cụ thể của từng trang sẽ được nhúng vào đây #}
+      {% endblock %}
+    </main>
+
+    <!-- Bottom Navigation Bar (Mobile View) -->
+    {% block bottom_nav %}
+    <nav class="bg-white border-t border-slate-200 px-4 py-2 flex items-center justify-around sticky bottom-0 z-20 shadow-lg text-slate-500 text-[11px] font-medium">
+      <a href="{% url 'rescue_create' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition">
+        <i class="fa-solid fa-bell-concierge text-base text-red-600"></i>
+        <span class="text-red-600 font-semibold">Cứu hộ</span>
+      </a>
+      <a href="{% url 'support_chat' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition">
+        <i class="fa-regular fa-comments text-base"></i>
+        <span>Trao đổi</span>
+      </a>
+      <a href="{% url 'live_tracking' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition">
+        <i class="fa-solid fa-location-crosshairs text-base"></i>
+        <span>Định vị</span>
+      </a>
+      <a href="{% url 'rating_feedback' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition">
+        <i class="fa-regular fa-star text-base"></i>
+        <span>Đánh giá</span>
+      </a>
+      <a href="{% url 'login' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition">
+        <i class="fa-regular fa-user text-base"></i>
+        <span>Tôi</span>
+      </a>
+    </nav>
+    {% endblock %}
+
+  </div>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

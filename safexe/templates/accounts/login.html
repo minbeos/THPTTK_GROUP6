@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}SafeXe - Đăng Nhập Tài Khoản{% endblock %}
+
+{% block content %}
+<div class="p-6 flex-1 flex flex-col justify-center">
+
+  <!-- Header Tiêu đề -->
+  <div class="mb-6 text-center">
+    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-100 text-red-600 mb-3 shadow-sm">
+      <i class="fa-solid fa-shield-halved text-2xl"></i>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Đăng Nhập</h1>
+    <p class="text-xs text-slate-500 mt-1">Truy cập hệ thống cứu hộ giao thông khẩn cấp SafeXe</p>
+  </div>
+
+  <!-- Thông báo lỗi đăng nhập từ Django Backend (nếu có) -->
+  {% if form.errors %}
+  <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 space-y-1">
+    {% for field in form %}
+      {% for error in field.errors %}
+        <p class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</p>
+      {% endfor %}
+    {% endfor %}
+    {% for error in form.non_field_errors %}
+      <p class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Form Đăng Nhập -->
+  <form method="POST" action="{% url 'login' %}" id="loginForm" class="space-y-4">
+    {% csrf_token %}
+
+    <!-- 1. Tài khoản / Số điện thoại / Email -->
+    <div>
+      <label for="username" class="block text-xs font-semibold text-slate-700 mb-1.5">Số điện thoại hoặc Email</label>
+      <div class="bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+        <i class="fa-regular fa-user text-slate-400 text-sm"></i>
+        <input 
+          type="text" 
+          name="username" 
+          id="username" 
+          required 
+          placeholder="Nhập SĐT hoặc email đã đăng ký" 
+          class="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+        />
+      </div>
+    </div>
+
+    <!-- 2. Mật khẩu -->
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label for="password" class="block text-xs font-semibold text-slate-700">Mật khẩu</label>
+        <a href="#" class="text-xs text-red-600 hover:underline font-medium">Quên mật khẩu?</a>
+      </div>
+      <div class="bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+        <i class="fa-solid fa-lock text-slate-400 text-sm"></i>
+        <input 
+          type="password" 
+          name="password" 
+          id="password" 
+          required 
+          placeholder="••••••••" 
+          class="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+        />
+        <button type="button" class="toggle-password text-slate-400 hover:text-slate-600" data-target="password">
+          <i class="fa-regular fa-eye"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. Ghi nhớ đăng nhập -->
+    <div class="flex items-center justify-between text-xs text-slate-600">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" name="remember_me" class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300">
+        <span>Ghi nhớ đăng nhập</span>
+      </label>
+    </div>
+
+    <!-- 4. Nút Đăng nhập -->
+    <div class="pt-2">
+      <button 
+        type="submit" 
+        class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 transition duration-200"
+      >
+        <span>Đăng Nhập</span>
+        <i class="fa-solid fa-arrow-right text-xs"></i>
+      </button>
+    </div>
+
+    <!-- 5. Chuyển sang Đăng ký -->
+    <p class="text-center text-xs text-slate-500 pt-3">
+      Chưa có tài khoản SafeXe? 
+      <a href="{% url 'register' %}" class="text-red-600 hover:underline font-bold">Đăng ký ngay</a>
+    </p>
+
+    <!-- Phân cách liên kết nhanh -->
+    <div class="relative flex items-center justify-center my-4">
+      <div class="border-t border-slate-200 w-full"></div>
+      <span class="bg-white px-3 text-[11px] text-slate-400 uppercase tracking-wider absolute">Hoặc tiếp tục với</span>
+    </div>
+
+    <!-- Đăng nhập mạng xã hội -->
+    <div class="grid grid-cols-2 gap-3">
+      <button type="button" class="border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold text-slate-700 transition">
+        <i class="fa-brands fa-google text-red-500"></i>
+        <span>Google</span>
+      </button>
+      <button type="button" class="border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold text-slate-700 transition">
+        <i class="fa-solid fa-comment-dots text-blue-500"></i>
+        <span>Zalo</span>
+      </button>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Tính năng ẩn / hiện mật khẩu
+  document.querySelectorAll('.toggle-password').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const targetId = this.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      const icon = this.querySelector('i');
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+
+{% block title %}SafeXe - Gửi Yêu Cầu Cứu Hộ Khẩn Cấp (SOS){% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col pb-4">
+
+  <!-- Tiêu đề & Cảnh báo SOS -->
+  <div class="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-white animate-ping"></span>
+        <h1 class="text-base font-bold uppercase tracking-wide">Tín Hiệu Cứu Hộ Khẩn Cấp</h1>
+      </div>
+      <span class="bg-black/20 text-white text-[10px] px-2 py-0.5 rounded-full font-semibold">Bán kính 10km</span>
+    </div>
+    <p class="text-xs text-red-100 mt-1">Đội ngũ thợ và tình nguyện viên gần bạn nhất sẽ nhận được thông báo ngay lập tức.</p>
+  </div>
+
+  <!-- Form Gửi Yêu Cầu Cứu Hộ -->
+  <form method="POST" action="{% url 'rescue_create' %}" enctype="multipart/form-data" id="rescueForm" class="p-4 space-y-4 text-xs">
+    {% csrf_token %}
+
+    <!-- 1. Vị trí & Định vị GPS -->
+    <div class="bg-red-50/70 border border-red-200 rounded-2xl p-3.5 space-y-2">
+      <div class="flex items-center justify-between">
+        <label for="locationInput" class="font-bold text-slate-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-location-dot text-red-600"></i>
+          <span>Vị trí gặp sự cố <span class="text-red-500">*</span></span>
+        </label>
+        <button type="button" id="btnGetGPS" class="text-red-600 font-bold hover:underline flex items-center gap-1">
+          <i class="fa-solid fa-crosshairs"></i> Lấy vị trí GPS
+        </button>
+      </div>
+
+      <div class="relative">
+        <input 
+          type="text" 
+          name="location_address" 
+          id="locationInput" 
+          required 
+          placeholder="Nhập địa chỉ hoặc số nhà, tên đường..." 
+          class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 pr-8 text-xs text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none shadow-sm"
+        />
+        <i class="fa-solid fa-map-pin text-slate-400 absolute right-3 top-2.5"></i>
+      </div>
+
+      <!-- Tọa độ ẩn (Lưu kinh độ, vĩ độ vào backend) -->
+      <input type="hidden" name="latitude" id="latitude" value="">
+      <input type="hidden" name="longitude" id="longitude" value="">
+
+      <!-- Cột mốc nhận diện -->
+      <input 
+        type="text" 
+        name="landmark" 
+        id="landmark" 
+        placeholder="Mô tả cột mốc dễ tìm (VD: Đối diện cây xăng, gần ngã tư...)" 
+        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-600 focus:ring-1 focus:ring-red-500 focus:outline-none"
+      />
+    </div>
+
+    <!-- 2. Loại phương tiện gặp sự cố -->
+    <div class="space-y-1.5">
+      <label for="vehicleSelect" class="font-bold text-slate-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-motorcycle text-slate-500"></i>
+        <span>1. Loại phương tiện gặp sự cố <span class="text-red-500">*</span></span>
+      </label>
+
+      <div class="relative">
+        <select 
+          name="vehicle_type" 
+          id="vehicleSelect" 
+          required 
+          class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none appearance-none cursor-pointer"
+        >
+          <option value="" disabled selected>-- Chọn loại phương tiện --</option>
+          <option value="motorcycle">Xe máy (Xe số / Xe tay ga)</option>
+          <option value="car">Xe ô tô (4 - 7 chỗ)</option>
+          <option value="electric_bike">Xe máy điện / Xe đạp điện</option>
+          <option value="bicycle">Xe đạp thể thao / phổ thông</option>
+          <option value="other_vehicle" class="font-bold text-red-600">Phương tiện khác (Nhập thủ công...)</option>
+        </select>
+        <i class="fa-solid fa-chevron-down absolute right-3.5 top-3 text-slate-400 pointer-events-none"></i>
+      </div>
+
+      <!-- Ô nhập phương tiện khác (hiện khi chọn "Phương tiện khác") -->
+      <div id="otherVehicleContainer" class="hidden bg-red-50 p-2.5 rounded-xl border border-red-200 space-y-1">
+        <label for="otherVehicleText" class="font-semibold text-red-700">Tên loại phương tiện khác:</label>
+        <input 
+          type="text" 
+          name="other_vehicle_text" 
+          id="otherVehicleText" 
+          placeholder="VD: Xe ba gác, Xe tải nhỏ, Xe nâng..." 
+          class="w-full bg-white border border-red-300 rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+        />
+      </div>
+
+      <!-- Tên xe & Biển số -->
+      <input 
+        type="text" 
+        name="vehicle_plate" 
+        id="vehiclePlate" 
+        placeholder="Tên xe & Biển số (VD: Honda Lead đỏ - 43C1-987.65)" 
+        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+      />
+    </div>
+
+    <!-- 3. Loại sự cố cần cứu hộ -->
+    <div class="space-y-1.5">
+      <label for="issueSelect" class="font-bold text-slate-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+        <span>2. Sự cố đang gặp phải <span class="text-red-500">*</span></span>
+      </label>
+
+      <div class="relative">
+        <select 
+          name="issue_type" 
+          id="issueSelect" 
+          required 
+          class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none appearance-none cursor-pointer"
+        >
+          <option value="" disabled selected>-- Chọn loại sự cố chính --</option>
+          <option value="puncture">Thủng săm / Xẹp lốp / Nổ lốp bánh xe</option>
+          <option value="fuel">Hết xăng giữa đường</option>
+          <option value="battery">Hỏng bình ắc quy / Cần kích bình nổ máy</option>
+          <option value="engine">Chết máy / Ngập nước không đề được</option>
+          <option value="chain_brake">Đứt xích / Bó kẹt phanh không lăn bánh</option>
+          <option value="key">Mất chìa khóa / Kẹt ổ khóa thông minh (Smartkey)</option>
+          <option value="accident">Va chạm giao thông / Cần xe cứu hộ chở về</option>
+          <option value="other_issue" class="font-bold text-red-600">Sự cố khác (Tự mô tả...)</option>
+        </select>
+        <i class="fa-solid fa-chevron-down absolute right-3.5 top-3 text-slate-400 pointer-events-none"></i>
+      </div>
+
+      <!-- Ô nhập sự cố khác -->
+      <div id="otherIssueContainer" class="hidden bg-red-50 p-2.5 rounded-xl border border-red-200 space-y-1">
+        <label for="otherIssueText" class="font-semibold text-red-700">Mô tả cụ thể sự cố khác:</label>
+        <textarea 
+          name="other_issue_text" 
+          id="otherIssueText" 
+          rows="2" 
+          placeholder="Mô tả hiện tượng xe đang gặp phải..." 
+          class="w-full bg-white border border-red-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+        ></textarea>
+      </div>
+
+      <!-- Ghi chú thêm cho thợ -->
+      <textarea 
+        name="notes" 
+        rows="2" 
+        placeholder="Ghi chú thêm cho thợ cứu hộ (VD: Cần vá gấp, có đồ thay thế không...)" 
+        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+      ></textarea>
+    </div>
+
+    <!-- 4. Mức độ khẩn cấp -->
+    <div class="space-y-1.5">
+      <label class="font-bold text-slate-700 block">3. Mức độ ưu tiên khẩn cấp</label>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="border-2 border-red-500 bg-red-50/60 rounded-xl p-2 flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="urgency_level" value="urgent" checked class="text-red-600 focus:ring-red-500">
+          <div>
+            <span class="font-bold text-red-600 block">Rất khẩn cấp (SOS)</span>
+            <span class="text-[10px] text-slate-500">Đang ở nơi vắng / Đêm muộn</span>
+          </div>
+        </label>
+        <label class="border border-slate-200 hover:border-slate-300 rounded-xl p-2 flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="urgency_level" value="normal" class="text-red-600 focus:ring-red-500">
+          <div>
+            <span class="font-bold text-slate-700 block">Bình thường</span>
+            <span class="text-[10px] text-slate-500">Có thể đợi khoảng 15-30 phút</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- 5. Tải ảnh hiện trường -->
+    <div class="space-y-1.5">
+      <div class="flex items-center justify-between">
+        <label class="font-bold text-slate-700 flex items-center gap-1.5">
+          <i class="fa-solid fa-camera text-slate-500"></i>
+          <span>4. Ảnh chụp hiện trường sự cố</span>
+        </label>
+        <span class="text-[11px] text-slate-400">Tối đa 3 ảnh</span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <label class="w-16 h-16 border-2 border-dashed border-slate-300 hover:border-red-400 rounded-2xl flex flex-col items-center justify-center cursor-pointer bg-slate-50 hover:bg-red-50/30 text-slate-500 transition">
+          <i class="fa-solid fa-plus text-base mb-0.5 text-slate-400"></i>
+          <span class="text-[9px] font-semibold">Tải ảnh</span>
+          <input type="file" name="incident_images" id="imageUpload" accept="image/*" multiple class="hidden">
+        </label>
+        <p class="text-[11px] text-slate-500 flex-1 leading-snug">
+          Chụp ảnh góc xe bị hỏng giúp thợ nhận biết đúng dụng cụ và linh kiện cần mang theo.
+        </p>
+      </div>
+      <div id="filePreviewList" class="text-[11px] text-emerald-600 font-medium"></div>
+    </div>
+
+    <!-- 6. Nút Gửi Yêu Cầu Cứu Hộ -->
+    <div class="pt-2">
+      <button 
+        type="submit" 
+        class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 active:scale-[0.99] text-white py-3.5 rounded-2xl font-bold text-sm shadow-xl shadow-red-600/30 flex items-center justify-center gap-2 transition"
+      >
+        <i class="fa-solid fa-tower-broadcast animate-pulse text-base"></i>
+        <span>PHÁT TÍN HIỆU CỨU HỘ NGAY</span>
+      </button>
+      <p class="text-center text-[10px] text-slate-400 mt-1.5">
+        Bằng cách gửi yêu cầu, vị trí của bạn sẽ được chia sẻ cho các đối tác cứu hộ gần nhất.
+      </p>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // 1. Tự động lấy vị trí GPS từ trình duyệt
+  document.getElementById('btnGetGPS').addEventListener('click', function() {
+    const locInput = document.getElementById('locationInput');
+    const latInput = document.getElementById('latitude');
+    const lngInput = document.getElementById('longitude');
+
+    if (navigator.geolocation) {
+      locInput.value = 'Đang dò vị trí vệ tinh...';
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          latInput.value = lat;
+          lngInput.value = lng;
+          locInput.value = `Tọa độ GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (Đã xác định vị trí)`;
+        },
+        function(error) {
+          locInput.value = '';
+          alert('Không thể lấy vị trí tự động. Vui lòng cho phép quyền truy cập vị trí hoặc nhập tay địa chỉ.');
+        }
+      );
+    } else {
+      alert('Trình duyệt của bạn không hỗ trợ định vị GPS.');
+    }
+  });
+
+  // 2. Ẩn / Hiện ô nhập khi chọn "Phương tiện khác"
+  document.getElementById('vehicleSelect').addEventListener('change', function() {
+    const otherBox = document.getElementById('otherVehicleContainer');
+    if (this.value === 'other_vehicle') {
+      otherBox.classList.remove('hidden');
+    } else {
+      otherBox.classList.add('hidden');
+    }
+  });
+
+  // 3. Ẩn / Hiện ô nhập khi chọn "Sự cố khác"
+  document.getElementById('issueSelect').addEventListener('change', function() {
+    const otherBox = document.getElementById('otherIssueContainer');
+    if (this.value === 'other_issue') {
+      otherBox.classList.remove('hidden');
+    } else {
+      otherBox.classList.add('hidden');
+    }
+  });
+
+  // 4. Hiển thị tên file ảnh đã chọn
+  document.getElementById('imageUpload').addEventListener('change', function() {
+    const fileList = document.getElementById('filePreviewList');
+    if (this.files.length > 0) {
+      fileList.textContent = `Đã đính kèm ${this.files.length} ảnh hiện trường.`;
+    } else {
+      fileList.textContent = '';
+    }
+  });
+</script>
+{% endblock %}

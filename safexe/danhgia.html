@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeXe - Đánh Giá Ca Cứu Hộ</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex justify-center p-0 sm:p-4">
+
+  <!-- Mobile Container -->
+  <div class="w-full max-w-md bg-white min-h-screen sm:min-h-0 sm:rounded-3xl shadow-xl flex flex-col overflow-hidden pb-6">
+    
+    <!-- Top Bar -->
+    <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+      <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">SafeXe Community</span>
+      <button type="button" class="text-slate-400 hover:text-slate-600 text-lg p-1" title="Để sau">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Review Form -->
+    <form id="reviewForm" class="p-5 flex-1 flex flex-col space-y-5 text-sm">
+
+      <!-- Thông tin ca cứu hộ vừa hoàn thành -->
+      <div class="text-center space-y-2">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mb-1">
+          <i class="fa-solid fa-circle-check text-2xl"></i>
+        </div>
+        <h2 class="text-lg font-bold text-slate-800">Cứu hộ hoàn tất!</h2>
+        <p class="text-xs text-slate-500">Hãy chia sẻ trải nghiệm để ghi nhận người hỗ trợ và xây dựng cộng đồng SafeXe uy tín.</p>
+
+        <!-- Thẻ người hỗ trợ -->
+        <div class="mt-3 bg-slate-50 border border-slate-200/80 rounded-2xl p-3 flex items-center gap-3 text-left">
+          <div class="relative">
+            <img 
+              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80" 
+              alt="Avatar Người cứu hộ" 
+              class="w-12 h-12 rounded-full object-cover border-2 border-red-500 shadow-sm"
+            />
+            <span class="absolute -bottom-1 -right-1 bg-emerald-500 text-white text-[9px] px-1 rounded-full border border-white">
+              <i class="fa-solid fa-shield"></i>
+            </span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <h3 class="font-bold text-slate-800 text-sm truncate">Nguyễn Văn Hùng</h3>
+              <span class="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                <i class="fa-solid fa-star text-amber-500"></i> 4.9
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 truncate mt-0.5">
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Đánh giá số sao (Star Rating) -->
+      <div class="bg-amber-50/50 border border-amber-200/70 rounded-2xl p-4 text-center space-y-2">
+        <label class="text-xs font-bold text-slate-700 uppercase tracking-wide block">
+          Chất lượng dịch vụ hỗ trợ
+        </label>
+        
+        <!-- Dãy 5 ngôi sao -->
+        <div class="flex justify-center items-center gap-3 py-1 text-3xl" id="starContainer">
+          <button type="button" class="star-btn text-amber-400 transition hover:scale-125 focus:outline-none" data-value="1">
+            <i class="fa-solid fa-star"></i>
+          </button>
+          <button type="button" class="star-btn text-amber-400 transition hover:scale-125 focus:outline-none" data-value="2">
+            <i class="fa-solid fa-star"></i>
+          </button>
+          <button type="button" class="star-btn text-amber-400 transition hover:scale-125 focus:outline-none" data-value="3">
+            <i class="fa-solid fa-star"></i>
+          </button>
+          <button type="button" class="star-btn text-amber-400 transition hover:scale-125 focus:outline-none" data-value="4">
+            <i class="fa-solid fa-star"></i>
+          </button>
+          <button type="button" class="star-btn text-amber-400 transition hover:scale-125 focus:outline-none" data-value="5">
+            <i class="fa-solid fa-star"></i>
+          </button>
+        </div>
+        <input type="hidden" id="ratingValue" value="5" />
+
+        <!-- Label cảm xúc tương ứng theo sao -->
+        <p id="ratingLabel" class="text-xs font-bold text-amber-700">Tuyệt vời & Rất nhanh chóng!</p>
+      </div>
+
+      <!-- Thẻ đánh giá nhanh (Quick Tags) -->
+      <div class="space-y-2">
+        <label class="font-bold text-slate-700 text-xs flex items-center justify-between">
+          <span>Điểm nổi bật của người hỗ trợ:</span>
+          <span class="text-[11px] font-normal text-slate-400">Chọn nhiều mục</span>
+        </label>
+        
+        <div class="flex flex-wrap gap-2" id="quickTags">
+          <button type="button" class="tag-btn text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-amber-500"></i> Đến rất nhanh
+          </button>
+          <button type="button" class="tag-btn text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-heart text-red-500"></i> Nhiệt tình, thân thiện
+          </button>
+          <button type="button" class="tag-btn text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-screwdriver-wrench text-blue-500"></i> Đầy đủ đồ nghề
+          </button>
+          <button type="button" class="tag-btn text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-hand-holding-dollar text-emerald-500"></i> Chi phí đúng thỏa thuận
+          </button>
+          <button type="button" class="tag-btn text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-award text-indigo-500"></i> Tay nghề sửa tốt
+          </button>
+        </div>
+      </div>
+
+      <!-- Ô viết nhận xét chi tiết -->
+      <div class="space-y-1.5">
+        <label for="reviewComment" class="font-bold text-slate-700 text-xs">
+          Lời nhắn gửi hoặc nhận xét thêm
+        </label>
+        <div class="relative">
+          <textarea 
+            id="reviewComment" 
+            rows="3" 
+            maxlength="300"
+            placeholder="Ví dụ: Anh Hùng đến chỉ sau 7 phút, vá xe rất cẩn thận và hướng dẫn mình cách kiểm tra xăm lốp..." 
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 focus:ring-2 focus:ring-red-500 focus:outline-none resize-none"
+          ></textarea>
+          <div class="text-[10px] text-slate-400 text-right pr-2">
+            <span id="charCount">0</span>/300 ký tự
+          </div>
+        </div>
+      </div>
+
+      <!-- Tải ảnh xe đã sửa xong (Tùy chọn) -->
+      <div class="space-y-1.5">
+        <label class="font-bold text-slate-700 text-xs flex items-center justify-between">
+          <span>Hình ảnh nghiệm thu (Nếu có)</span>
+          <span class="text-[11px] font-normal text-slate-400">Tùy chọn</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <label class="w-16 h-16 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400 transition">
+            <i class="fa-solid fa-camera text-base mb-0.5"></i>
+            <span class="text-[9px]">Thêm ảnh</span>
+            <input type="file" accept="image/*" class="hidden" />
+          </label>
+          <p class="text-[11px] text-slate-500 leading-normal">
+            Ảnh chụp xe sau khi sửa hoặc hóa đơn/linh kiện thay thế để lưu vào lịch sử chuyến đi.
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="pt-2 space-y-2">
+        <button 
+          type="submit" 
+          class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-red-500/30 flex items-center justify-center gap-2 text-sm transition"
+        >
+          <i class="fa-solid fa-paper-plane"></i>
+          GỬI ĐÁNH GIÁ & HOÀN TẤT
+        </button>
+        <button 
+          type="button" 
+          class="w-full py-2 text-xs text-slate-400 hover:text-slate-600 font-medium transition text-center"
+        >
+          Để sau
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- JavaScript Logic Tương Tác -->
+  <script>
+    const stars = document.querySelectorAll('.star-btn');
+    const ratingValue = document.getElementById('ratingValue');
+    const ratingLabel = document.getElementById('ratingLabel');
+    const quickTags = document.querySelectorAll('.tag-btn');
+    const reviewComment = document.getElementById('reviewComment');
+    const charCount = document.getElementById('charCount');
+
+    // Nhãn cảm xúc tương ứng số sao
+    const labels = {
+      1: "Rất không hài lòng (Kém)",
+      2: "Chưa hài lòng",
+      3: "Bình thường / Tạm được",
+      4: "Hài lòng & Nhiệt tình",
+      5: "Tuyệt vời & Rất nhanh chóng!"
+    };
+
+    // 1. Xử lý bấm chọn sao
+    stars.forEach(star => {
+      star.addEventListener('click', function() {
+        const val = parseInt(this.getAttribute('data-value'));
+        ratingValue.value = val;
+        ratingLabel.textContent = labels[val];
+
+        // Cập nhật màu sắc sao
+        stars.forEach(s => {
+          const sVal = parseInt(s.getAttribute('data-value'));
+          if (sVal <= val) {
+            s.classList.add('text-amber-400');
+            s.classList.remove('text-slate-200');
+          } else {
+            s.classList.remove('text-amber-400');
+            s.classList.add('text-slate-200');
+          }
+        });
+      });
+    });
+
+    // 2. Bấm chọn/bỏ chọn các Tag khen ngợi
+    quickTags.forEach(tag => {
+      tag.addEventListener('click', function() {
+        this.classList.toggle('border-red-600');
+        this.classList.toggle('bg-red-50');
+        this.classList.toggle('text-red-600');
+        this.classList.toggle('font-medium');
+      });
+    });
+
+    // 3. Đếm số ký tự lời nhắn
+    reviewComment.addEventListener('input', function() {
+      charCount.textContent = this.value.length;
+    });
+
+    // 4. Xử lý gửi biểu mẫu đánh giá
+    document.getElementById('reviewForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const starsRated = ratingValue.value;
+      alert(`Cảm ơn bạn đã gửi đánh giá ${starsRated} sao!\nĐiểm đánh giá đã được cập nhật vào hồ sơ uy tín của người hỗ trợ.`);
+    });
+  </script>
+</body>
+</html>
