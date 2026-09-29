@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}SafeXe - Tài Khoản Của Tôi{% endblock %}
+
+{% block content %}
+<div class="p-5 flex-1 flex flex-col justify-between">
+
+  <div>
+    <!-- Nút quay lại & Tiêu đề thanh trên -->
+    <div class="flex items-center justify-between mb-4">
+      <a href="{% url 'rescue_create' %}" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition" title="Quay lại">
+        <i class="fa-solid fa-chevron-left text-sm"></i>
+      </a>
+      <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Thông Tin Cá Nhân</span>
+      <a href="{% url 'logout' %}" class="w-9 h-9 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition" title="Đăng xuất">
+        <i class="fa-solid fa-arrow-right-from-bracket text-sm"></i>
+      </a>
+    </div>
+
+    <!-- Profile Header Card -->
+    <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-red-950 text-white rounded-3xl p-5 shadow-xl relative overflow-hidden mb-5">
+      <!-- Background pattern decor -->
+      <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-red-600/20 rounded-full blur-2xl"></div>
+      <div class="absolute right-3 top-3 text-red-500/10 text-6xl">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+
+      <div class="relative z-10 flex items-center gap-4">
+        <!-- Avatar -->
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-amber-500 text-white flex items-center justify-center text-2xl font-bold shadow-lg ring-4 ring-white/10 shrink-0">
+          {{ user.first_name|default:user.username|slice:":1"|upper }}
+        </div>
+
+        <!-- User Info -->
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-white truncate">{{ user.first_name|default:user.username }}</h1>
+            <span class="inline-flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Đã kích hoạt
+            </span>
+          </div>
+          <div class="mt-1 space-y-0.5 text-xs text-slate-300">
+            <p class="truncate flex items-center gap-1.5">
+              <i class="fa-solid fa-phone text-[11px] text-amber-400"></i>
+              <span>{{ user.profile.phone|default:user.username }}</span>
+              <span class="text-slate-500">•</span>
+              <i class="fa-regular fa-id-card text-[11px] text-emerald-400"></i>
+              <span>CCCD: {{ user.profile.id_card|default:"Chưa cập nhật" }}</span>
+            </p>
+            <p class="truncate flex items-center gap-1.5 text-slate-300">
+              <i class="fa-regular fa-envelope text-[11px] text-red-400"></i>
+              <span>{{ user.email|default:"Chưa cập nhật email" }}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick stats & Edit profile button -->
+      <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-xs text-slate-300">
+          <i class="fa-regular fa-calendar-check text-red-400"></i>
+          <span>Gia nhập: {{ user.date_joined|date:"d/m/Y" }}</span>
+        </div>
+        <a href="{% url 'edit_profile' %}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-white text-xs font-semibold backdrop-blur-sm border border-white/20 transition shadow-sm">
+          <i class="fa-solid fa-pen-to-square text-[11px] text-amber-300"></i>
+          <span>Chỉnh sửa</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Nhóm chức năng: Quản lý & Bảo mật -->
+    <div class="space-y-4">
+      <div>
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">Hồ Sơ & Bảo Mật</h2>
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-slate-100">
+          
+          <!-- Chức năng CHỈNH SỬA HỒ SƠ (UC-PROFILE-01) -->
+          <a href="{% url 'edit_profile' %}" class="p-3.5 flex items-center justify-between hover:bg-slate-50 transition group">
+            <div class="flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base group-hover:scale-110 transition shrink-0">
+                <i class="fa-solid fa-user-pen"></i>
+              </div>
+              <div>
+                <span class="font-semibold text-slate-800 text-sm">Chỉnh sửa hồ sơ cá nhân</span>
+                <p class="text-xs text-slate-500 mt-0.5">Cập nhật họ tên, email, số điện thoại liên lạc</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition"></i>
+          </a>
+
+          <!-- Chức năng ĐỔI MẬT KHẨU -->
+          <a href="{% url 'change_password' %}" class="p-3.5 flex items-center justify-between hover:bg-slate-50 transition group">
+            <div class="flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-base group-hover:scale-110 transition shrink-0">
+                <i class="fa-solid fa-key"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-slate-800 text-sm">Đổi mật khẩu</span>
+                  <span class="bg-amber-100 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Khuyên dùng</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">Cập nhật mật khẩu mới để bảo vệ tài khoản</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition"></i>
+          </a>
+
+          <!-- Trạng thái xác thực 2 lớp / Thiết bị -->
+          <div class="p-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-base shrink-0">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div>
+                <span class="font-semibold text-slate-800 text-sm">Trạng thái tài khoản</span>
+                <p class="text-xs text-slate-500 mt-0.5">Bảo vệ phiên đăng nhập an toàn</p>
+              </div>
+            </div>
+            <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+              An toàn
+            </span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Nhóm chức năng: Dịch vụ & Cứu hộ -->
+      <div>
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">Dịch Vụ SafeXe</h2>
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-slate-100">
+          
+          <a href="{% url 'rescue_create' %}" class="p-3.5 flex items-center justify-between hover:bg-slate-50 transition group">
+            <div class="flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center text-base group-hover:scale-110 transition shrink-0">
+                <i class="fa-solid fa-bell-concierge"></i>
+              </div>
+              <div>
+                <span class="font-semibold text-slate-800 text-sm">Tạo yêu cầu cứu hộ</span>
+                <p class="text-xs text-slate-500 mt-0.5">Gửi tín hiệu khẩn cấp đến đội cứu hộ 10km</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-red-600 group-hover:translate-x-0.5 transition"></i>
+          </a>
+
+          <a href="{% url 'rating_feedback' %}" class="p-3.5 flex items-center justify-between hover:bg-slate-50 transition group">
+            <div class="flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base group-hover:scale-110 transition shrink-0">
+                <i class="fa-regular fa-star"></i>
+              </div>
+              <div>
+                <span class="font-semibold text-slate-800 text-sm">Lịch sử & Đánh giá</span>
+                <p class="text-xs text-slate-500 mt-0.5">Xem phản hồi và đánh giá dịch vụ đã qua</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition"></i>
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nút Đăng xuất nổi bật ở dưới -->
+  <div class="mt-6 pt-2">
+    <a href="{% url 'logout' %}" class="w-full py-3 px-4 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-sm flex items-center justify-center gap-2 transition active:scale-[0.99] shadow-sm">
+      <i class="fa-solid fa-arrow-right-from-bracket"></i>
+      <span>Đăng Xuất Khỏi Tài Khoản</span>
+    </a>
+    <p class="text-center text-[11px] text-slate-400 mt-2">Phiên bản SafeXe 1.0 • Cứu hộ thông minh</p>
+  </div>
+
+</div>
+{% endblock %}
