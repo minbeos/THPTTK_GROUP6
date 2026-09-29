@@ -6,48 +6,54 @@
 <div class="p-5 flex-1 flex flex-col justify-center">
 
   <!-- Header Tiêu đề -->
-  <div class="mb-5 text-center">
+  <div class="mb-4 text-center">
     <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-red-100 text-red-600 mb-2 shadow-sm">
       <i class="fa-solid fa-user-plus text-xl"></i>
     </div>
     <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Tạo Tài Khoản SafeXe</h1>
-    <p class="text-xs text-slate-500 mt-1">Gia nhập mạng lưới hỗ trợ & cứu hộ giao thông 24/7</p>
+    <p class="text-xs text-slate-500 mt-1">Hoàn tất đăng ký để tham gia hệ thống cứu hộ 24/7</p>
   </div>
 
-  <!-- Thông báo lỗi đăng ký từ Django Backend -->
+  <!-- Thông báo tổng hợp lỗi từ Backend -->
   {% if form.errors %}
-  <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 space-y-1">
-    {% for field in form %}
-      {% for error in field.errors %}
-        <p class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</p>
+  <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 space-y-1 shadow-sm">
+    <div class="font-bold flex items-center gap-1.5 text-red-700">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <span>Đăng ký thất bại! Vui lòng kiểm tra các lỗi sau:</span>
+    </div>
+    <ul class="list-disc pl-5 space-y-0.5 text-[11px]">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <li><strong>{{ field.label|default:field.name }}:</strong> {{ error }}</li>
+        {% endfor %}
       {% endfor %}
-    {% endfor %}
-    {% for error in form.non_field_errors %}
-      <p class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</p>
-    {% endfor %}
+      {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
   </div>
   {% endif %}
 
   <!-- Form Đăng Ký -->
-  <form method="POST" action="{% url 'register' %}" id="registerForm" class="space-y-3.5 text-xs">
+  <form method="POST" action="{% url 'register' %}" id="registerForm" class="space-y-3 text-xs" novalidate>
     {% csrf_token %}
 
     <!-- 1. Chọn loại tài khoản (Vai trò) -->
     <div>
-      <label class="block font-semibold text-slate-700 mb-1.5">Bạn tham gia với vai trò</label>
+      <label class="block font-semibold text-slate-700 mb-1">Bạn tham gia với vai trò <span class="text-red-500">*</span></label>
       <div class="grid grid-cols-2 gap-2">
-        <label class="border-2 border-red-500 bg-red-50/50 rounded-xl p-2.5 flex items-center gap-2 cursor-pointer transition">
-          <input type="radio" name="role" value="user" checked class="text-red-600 focus:ring-red-500">
+        <label class="border border-slate-300 has-[:checked]:border-red-500 has-[:checked]:bg-red-50/60 rounded-xl p-2.5 flex items-center gap-2 cursor-pointer transition">
+          <input type="radio" name="role" value="user" {% if form.role.value != 'rescuer' %}checked{% endif %} class="text-red-600 focus:ring-red-500">
           <div class="leading-tight">
             <span class="font-bold text-slate-800 block text-xs">Chủ phương tiện</span>
-            <span class="text-[10px] text-slate-500">Cần hỗ trợ cứu hộ</span>
+            <span class="text-[10px] text-slate-500">Cần cứu hộ khẩn cấp</span>
           </div>
         </label>
-        <label class="border border-slate-200 hover:border-slate-300 rounded-xl p-2.5 flex items-center gap-2 cursor-pointer transition">
-          <input type="radio" name="role" value="rescuer" class="text-red-600 focus:ring-red-500">
+        <label class="border border-slate-300 has-[:checked]:border-red-500 has-[:checked]:bg-red-50/60 rounded-xl p-2.5 flex items-center gap-2 cursor-pointer transition">
+          <input type="radio" name="role" value="rescuer" {% if form.role.value == 'rescuer' %}checked{% endif %} class="text-red-600 focus:ring-red-500">
           <div class="leading-tight">
             <span class="font-bold text-slate-800 block text-xs">Thợ cứu hộ</span>
-            <span class="text-[10px] text-slate-500">Tình nguyện viên</span>
+            <span class="text-[10px] text-slate-500">Tình nguyện viên hỗ trợ</span>
           </div>
         </label>
       </div>
@@ -56,24 +62,29 @@
     <!-- 2. Họ và Tên -->
     <div>
       <label for="fullName" class="block font-semibold text-slate-700 mb-1">Họ và Tên <span class="text-red-500">*</span></label>
-      <div class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2.5 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+      <div class="bg-slate-50 border {% if form.full_name.errors %}border-red-500{% else %}border-slate-300{% endif %} rounded-xl px-3 py-2 flex items-center gap-2.5 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
         <i class="fa-regular fa-user text-slate-400"></i>
         <input 
           type="text" 
           name="full_name" 
           id="fullName" 
           required 
+          value="{{ form.full_name.value|default:'' }}"
           placeholder="Ví dụ: Nguyễn Văn A" 
           class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
         />
       </div>
+      {% if form.full_name.errors %}
+        <p class="text-red-500 text-[11px] mt-1 flex items-center gap-1"><i class="fa-solid fa-circle-exclamation"></i> {{ form.full_name.errors.0 }}</p>
+      {% endif %}
     </div>
 
     <!-- 3. Số điện thoại & CCCD -->
     <div class="grid grid-cols-2 gap-2.5">
+      <!-- Số điện thoại -->
       <div>
         <label for="phone" class="block font-semibold text-slate-700 mb-1">Số Điện Thoại <span class="text-red-500">*</span></label>
-        <div class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+        <div class="bg-slate-50 border {% if form.phone.errors %}border-red-500{% else %}border-slate-300{% endif %} rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
           <i class="fa-solid fa-phone text-slate-400"></i>
           <input 
             type="tel" 
@@ -81,14 +92,20 @@
             id="phone" 
             required 
             maxlength="10" 
-            placeholder="0912345678" 
+            value="{{ form.phone.value|default:'' }}"
+            placeholder="10 chữ số" 
             class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
           />
         </div>
+        {% if form.phone.errors %}
+          <p class="text-red-500 text-[11px] mt-1 flex items-center gap-1"><i class="fa-solid fa-circle-exclamation"></i> {{ form.phone.errors.0 }}</p>
+        {% endif %}
       </div>
+
+      <!-- CCCD -->
       <div>
         <label for="cccd" class="block font-semibold text-slate-700 mb-1">Số CCCD <span class="text-red-500">*</span></label>
-        <div class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+        <div class="bg-slate-50 border {% if form.cccd.errors %}border-red-500{% else %}border-slate-300{% endif %} rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
           <i class="fa-regular fa-id-card text-slate-400"></i>
           <input 
             type="text" 
@@ -96,52 +113,63 @@
             id="cccd" 
             required 
             maxlength="12" 
+            value="{{ form.cccd.value|default:'' }}"
             placeholder="12 chữ số" 
             class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
           />
         </div>
+        {% if form.cccd.errors %}
+          <p class="text-red-500 text-[11px] mt-1 flex items-center gap-1"><i class="fa-solid fa-circle-exclamation"></i> {{ form.cccd.errors.0 }}</p>
+        {% endif %}
       </div>
     </div>
 
     <!-- 4. Địa chỉ Email -->
     <div>
       <label for="email" class="block font-semibold text-slate-700 mb-1">Địa Chỉ Email <span class="text-red-500">*</span></label>
-      <div class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2.5 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+      <div class="bg-slate-50 border {% if form.email.errors %}border-red-500{% else %}border-slate-300{% endif %} rounded-xl px-3 py-2 flex items-center gap-2.5 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
         <i class="fa-regular fa-envelope text-slate-400"></i>
         <input 
           type="email" 
           name="email" 
           id="email" 
           required 
+          value="{{ form.email.value|default:'' }}"
           placeholder="name@example.com" 
           class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
         />
       </div>
+      {% if form.email.errors %}
+        <p class="text-red-500 text-[11px] mt-1 flex items-center gap-1"><i class="fa-solid fa-circle-exclamation"></i> {{ form.email.errors.0 }}</p>
+      {% endif %}
     </div>
 
     <!-- 5. Mật khẩu & Xác nhận mật khẩu -->
     <div class="grid grid-cols-2 gap-2.5">
       <div>
         <label for="password" class="block font-semibold text-slate-700 mb-1">Mật Khẩu <span class="text-red-500">*</span></label>
-        <div class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+        <div class="bg-slate-50 border {% if form.password.errors %}border-red-500{% else %}border-slate-300{% endif %} rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
           <i class="fa-solid fa-lock text-slate-400"></i>
           <input 
             type="password" 
             name="password" 
             id="password" 
             required 
-            placeholder="••••••••" 
+            placeholder="≥ 8 ký tự (chữ & số)" 
             class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
           />
-          <button type="button" class="toggle-password text-slate-400 hover:text-slate-600" data-target="password">
+          <button type="button" class="toggle-password text-slate-400 hover:text-slate-600 focus:outline-none" data-target="password">
             <i class="fa-regular fa-eye"></i>
           </button>
         </div>
+        {% if form.password.errors %}
+          <p class="text-red-500 text-[11px] mt-1 flex items-center gap-1"><i class="fa-solid fa-circle-exclamation"></i> {{ form.password.errors.0 }}</p>
+        {% endif %}
       </div>
 
       <div>
         <label for="confirmPassword" class="block font-semibold text-slate-700 mb-1">Xác Nhận <span class="text-red-500">*</span></label>
-        <div class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+        <div class="bg-slate-50 border {% if form.confirm_password.errors %}border-red-500{% else %}border-slate-300{% endif %} rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
           <i class="fa-solid fa-lock text-slate-400"></i>
           <input 
             type="password" 
@@ -151,29 +179,26 @@
             placeholder="••••••••" 
             class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
           />
-          <button type="button" class="toggle-password text-slate-400 hover:text-slate-600" data-target="confirmPassword">
+          <button type="button" class="toggle-password text-slate-400 hover:text-slate-600 focus:outline-none" data-target="confirmPassword">
             <i class="fa-regular fa-eye"></i>
           </button>
         </div>
+        {% if form.confirm_password.errors %}
+          <p class="text-red-500 text-[11px] mt-1 flex items-center gap-1"><i class="fa-solid fa-circle-exclamation"></i> {{ form.confirm_password.errors.0 }}</p>
+        {% endif %}
       </div>
     </div>
-    <p id="passwordError" class="text-[11px] text-red-500 hidden">Mật khẩu xác nhận không trùng khớp!</p>
+    
+    <!-- Lỗi Client-side bằng JS -->
+    <div id="jsErrorAlert" class="hidden p-2.5 bg-red-50 border border-red-200 rounded-xl text-[11px] text-red-600 font-medium"></div>
 
-    <!-- 6. Đồng ý điều khoản -->
-    <div class="flex items-center gap-2 pt-1">
-      <input type="checkbox" id="terms" required class="rounded text-red-600 focus:ring-red-500 w-4 h-4 border-slate-300">
-      <label for="terms" class="text-[11px] text-slate-600">
-        Tôi đồng ý với <a href="#" class="text-red-600 underline">Điều khoản dịch vụ</a> & chính sách cứu hộ SafeXe.
-      </label>
-    </div>
-
-    <!-- 7. Nút Đăng Ký -->
+    <!-- 6. Nút Đăng Ký -->
     <div class="pt-2">
       <button 
         type="submit" 
         class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 transition duration-200"
       >
-        <span>Đăng Ký Ngay</span>
+        <span>Đăng Ký Tài Khoản</span>
         <i class="fa-solid fa-arrow-right text-xs"></i>
       </button>
     </div>
@@ -191,7 +216,7 @@
 
 {% block extra_js %}
 <script>
-  // 1. Tính năng ẩn/hiện mật khẩu
+  // 1. Bật / Tắt ẩn hiện mật khẩu
   document.querySelectorAll('.toggle-password').forEach(btn => {
     btn.addEventListener('click', function() {
       const targetId = this.getAttribute('data-target');
@@ -208,7 +233,7 @@
     });
   });
 
-  // 2. Ràng buộc chỉ nhập số cho SĐT và CCCD
+  // 2. Chỉ cho phép nhập ký tự số đối với SĐT và CCCD
   ['phone', 'cccd'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -218,17 +243,64 @@
     }
   });
 
-  // 3. Kiểm tra form client-side
+  // 3. Client-side Validation tuân thủ các quy tắc Business Rules (UC-01)
   document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const phone = document.getElementById('phone').value.trim();
+    const cccd = document.getElementById('cccd').value.trim();
+    const email = document.getElementById('email').value.trim();
     const pwd = document.getElementById('password').value;
     const confirmPwd = document.getElementById('confirmPassword').value;
-    const pwdError = document.getElementById('passwordError');
+    const jsError = document.getElementById('jsErrorAlert');
 
-    if (pwd !== confirmPwd) {
+    function showError(msg) {
       e.preventDefault();
-      pwdError.classList.remove('hidden');
-    } else {
-      pwdError.classList.add('hidden');
+      jsError.textContent = msg;
+      jsError.classList.remove('hidden');
+      jsError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    jsError.classList.add('hidden');
+
+    // Kiểm tra Số điện thoại
+    if (!/^\d{10}$/.test(phone)) {
+      showError('Số điện thoại phải bao gồm đúng 10 chữ số!');
+      return;
+    }
+
+    // Kiểm tra CCCD
+    if (!/^\d{12}$/.test(cccd)) {
+      showError('Căn cước công dân (CCCD) phải bao gồm đúng 12 chữ số!');
+      return;
+    }
+
+    // Kiểm tra Email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError('Địa chỉ email không hợp lệ!');
+      return;
+    }
+
+    // Kiểm tra Mật khẩu độ dài >= 8
+    if (pwd.length < 8) {
+      showError('Mật khẩu phải có độ dài tối thiểu 8 ký tự!');
+      return;
+    }
+
+    // Kiểm tra Mật khẩu không chứa khoảng trắng
+    if (/\s/.test(pwd)) {
+      showError('Mật khẩu không được chứa khoảng trắng!');
+      return;
+    }
+
+    // Kiểm tra Mật khẩu phải chứa cả chữ và số
+    if (!(/[A-Za-z]/.test(pwd) && /\d/.test(pwd))) {
+      showError('Mật khẩu phải chứa cả chữ cái và chữ số!');
+      return;
+    }
+
+    // Kiểm tra Mật khẩu xác nhận trùng khớp
+    if (pwd !== confirmPwd) {
+      showError('Mật khẩu xác nhận không trùng khớp!');
+      return;
     }
   });
 </script>

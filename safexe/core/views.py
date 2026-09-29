@@ -1,32 +1,159 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth import login, logout
+from .forms import RegisterForm, LoginForm
+from .models import User
+
+# ==========================================
+# 0. TRANG CHỦ (HOMEPAGE)
+# ==========================================
+def home_view(request):
+    """
+    Hiển thị giao diện trang chủ với form đăng nhập và đăng ký.
+    Xử lý trực tiếp form tại trang chủ mà không chuyển hướng.
+    """
+    if request.user.is_authenticated:
+        return redirect("live_tracking")
+
+    context = {
+        "active_tab": "login",
+        "login_data": {},
+        "register_data": {},
+    }
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "login":
+            context["active_tab"] = "login"
+            context["login_data"] = request.POST
+            form = LoginForm(request.POST)
+            if form.is_valid():
+                user = form.cleaned_data['user']
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                if form.cleaned_data.get("remember_me"):
+                    request.session.set_expiry(1209600)
+                else:
+                    request.session.set_expiry(0)
+                messages.success(request, f"Đăng nhập thành công! Chào mừng {user.full_name or user.phone}.")
+                return redirect("live_tracking")
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{error}")
+        
+        elif action == "register":
+            context["active_tab"] = "register"
+            context["register_data"] = request.POST
+            form = RegisterForm(request.POST)
+            if form.is_valid():
+                try:
+                    user = form.save()
+                    messages.success(request, "Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.")
+                    context["active_tab"] = "login"
+                    context["register_data"] = {}
+                except Exception as e:
+                    messages.error(request, f"Đã xảy ra lỗi hệ thống: {e}")
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{error}")
+
+    return render(request, "home.html", context)
 
 # ==========================================
 # 1. QUẢN LÝ TÀI KHOẢN (ĐĂNG NHẬP & ĐĂNG KÝ)
 # ==========================================
 def login_view(request):
     """
-    Xử lý giao diện và đăng nhập người dùng.
+    Xử lý giao diện và xác thực đăng nhập tài khoản (Use Case 02).
+    Post-condition: Chuyển hướng đến màn hình chia sẻ vị trí GPS (live_tracking).
     """
+    if request.user.is_authenticated:
+        return redirect("live_tracking")
+
     if request.method == "POST":
-        # TODO: Xử lý authenticate(username=..., password=...) và login(request, user)
-        username = request.POST.get("username")
-        messages.success(request, f"Đăng nhập thành công! Xin chào {username}.")
-        return redirect("rescue_create")
-    return render(request, "accounts/login.html")
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            user = form.cleaned_data['user']
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+
+            # Cấu hình lưu phiên ghi nhớ đăng nhập
+            if form.cleaned_data.get("remember_me"):
+                request.session.set_expiry(1209600)  # 14 ngày
+            else:
+                request.session.set_expiry(0)  # Đóng trình duyệt sẽ hủy session
+
+            messages.success(request, f"Đăng nhập thành công! Chào mừng {user.full_name or user.phone} đến với SafeXe.")
+            next_url = request.GET.get("next") or "live_tracking"
+            return redirect(next_url)
+        else:
+            messages.error(request, "Đăng nhập không thành công. Vui lòng kiểm tra lại thông tin!")
+    else:
+        form = LoginForm()
+
+    return render(request, "accounts/login.html", {"form": form})
+
+
+def logout_view(request):
+    """
+    Đăng xuất người dùng khỏi hệ thống.
+    """
+    logout(request)
+    messages.info(request, "Bạn đã đăng xuất thành công.")
+    return redirect("login")
+
 
 
 def register_view(request):
     """
-    Xử lý giao diện và đăng ký tài khoản mới.
+    Xử lý giao diện và đăng ký tài khoản mới (Use Case 01).
     """
-    if request.method == "POST":
-        # TODO: Lưu tài khoản mới vào database User/Rescuer profile
-        full_name = request.POST.get("full_name")
-        messages.success(request, f"Tài khoản của {full_name} đã được tạo thành công! Hãy đăng nhập.")
-        return redirect("login")
-    return render(request, "accounts/register.html")
+    if request.user.is_authenticated:
+        return redirect("rescue_create")
 
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            try:
+                user = form.save()
+                messages.success(request, "Đăng ký tài khoản thành công! Vui lòng đăng nhập để tiếp tục.")
+                return redirect("login")
+            except Exception as e:
+                messages.error(request, f"Đã xảy ra lỗi hệ thống khi lưu tài khoản. Vui lòng thử lại! Lỗi: {e}")
+        else:
+            messages.error(request, "Đăng ký không thành công. Vui lòng kiểm tra và sửa lại các trường bị lỗi.")
+    else:
+        form = RegisterForm()
+
+    return render(request, "accounts/register.html", {"form": form})
+
+
+def google_login_simulate_view(request):
+    """
+    Giả lập đăng nhập bằng Google (Dùng cho demo đồ án).
+    """
+    email = "google_user_demo@gmail.com"
+    phone = "0999888777"
+    cccd = "000111222333"
+    
+    user, created = User.objects.get_or_create(
+        email=email,
+        defaults={
+            "username": phone,
+            "phone": phone,
+            "cccd": cccd,
+            "full_name": "Google User Demo",
+            "role": "user"
+        }
+    )
+    if created:
+        user.set_password("demo123456")
+        user.save()
+        
+    login(request, user, backend='social_core.backends.google.GoogleOAuth2')
+    messages.success(request, f"Đăng nhập qua Google thành công! Chào mừng {user.full_name}.")
+    return redirect("live_tracking")
 
 # ==========================================
 # 2. TẠO YÊU CẦU CỨU HỘ KHẨN CẤP (SOS)

@@ -74,13 +74,23 @@
 
       <!-- Quick action badge & User Profile link -->
       <div class="flex items-center gap-2">
-        <span class="inline-flex items-center gap-1 bg-white/15 px-2.5 py-1 rounded-full text-[11px] font-medium text-white">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          Trực tuyến
-        </span>
-        <a href="{% url 'login' %}" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs text-white transition" title="Tài khoản">
-          <i class="fa-regular fa-user"></i>
-        </a>
+        {% if user.is_authenticated %}
+          <span class="inline-flex items-center gap-1 bg-white/15 px-2.5 py-1 rounded-full text-[11px] font-medium text-white max-w-[130px] truncate" title="{{ user.full_name|default:user.phone }}">
+            <i class="fa-solid fa-user-check text-emerald-400"></i>
+            <span class="truncate">{{ user.full_name|default:user.phone }}</span>
+          </span>
+          <a href="{% url 'logout' %}" class="w-8 h-8 rounded-full bg-red-700 hover:bg-red-800 flex items-center justify-center text-xs text-white transition" title="Đăng xuất">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </a>
+        {% else %}
+          <span class="inline-flex items-center gap-1 bg-white/15 px-2.5 py-1 rounded-full text-[11px] font-medium text-white">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Trực tuyến
+          </span>
+          <a href="{% url 'login' %}" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs text-white transition" title="Đăng nhập">
+            <i class="fa-regular fa-user"></i>
+          </a>
+        {% endif %}
       </div>
     </header>
     {% endblock %}
@@ -131,10 +141,17 @@
         <i class="fa-regular fa-star text-base"></i>
         <span>Đánh giá</span>
       </a>
+      {% if user.is_authenticated %}
+      <a href="{% url 'logout' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition" title="Đăng xuất">
+        <i class="fa-solid fa-right-from-bracket text-base text-slate-600"></i>
+        <span>Đăng xuất</span>
+      </a>
+      {% else %}
       <a href="{% url 'login' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition">
         <i class="fa-regular fa-user text-base"></i>
-        <span>Tôi</span>
+        <span>Đăng nhập</span>
       </a>
+      {% endif %}
     </nav>
     {% endblock %}
 
