@@ -28,6 +28,17 @@
   </div>
   {% endif %}
 
+  <!-- Gợi ý tài khoản demo để kiểm thử nhanh -->
+  <div class="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-center justify-between">
+    <div>
+      <span class="font-semibold text-slate-700 block">Tài khoản thử nghiệm:</span>
+      <span class="text-slate-500 font-mono text-[11px]">demo / Password@123</span>
+    </div>
+    <button type="button" onclick="document.getElementById('username').value='demo';document.getElementById('password').value='Password@123';" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-[11px] font-semibold text-slate-700 transition shadow-sm">
+      Điền nhanh
+    </button>
+  </div>
+
   <!-- Form Đăng Nhập -->
   <form method="POST" action="{% url 'login' %}" id="loginForm" class="space-y-4">
     {% csrf_token %}

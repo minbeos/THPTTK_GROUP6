@@ -2,12 +2,17 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # 0. Trang chủ trước khi đăng nhập
+    path("", views.landing_view, name="landing"),
     # 1. Quản lý tài khoản
     path("login/", views.login_view, name="login"),
     path("register/", views.register_view, name="register"),
+    path("logout/", views.logout_view, name="logout"),
+    path("account/", views.account_view, name="account"),
+    path("profile/edit/", views.edit_profile_view, name="edit_profile"),
+    path("change-password/", views.change_password_view, name="change_password"),
 
     # 2. Tạo yêu cầu cứu hộ khẩn cấp
-    path("", views.create_request_view, name="rescue_create"),
     path("rescue/create/", views.create_request_view, name="rescue_create"),
 
     # 3. Trao đổi & Chấp nhận hỗ trợ

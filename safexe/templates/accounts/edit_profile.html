@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+
+{% block title %}SafeXe - Chỉnh Sửa Hồ Sơ Cá Nhân{% endblock %}
+
+{% block content %}
+<div class="p-5 flex-1 flex flex-col justify-between">
+
+  <div>
+    <!-- Nút quay lại & Tiêu đề thanh trên -->
+    <div class="flex items-center justify-between mb-4">
+      <a href="{% url 'account' %}" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition" title="Quay lại Tài khoản">
+        <i class="fa-solid fa-chevron-left text-sm"></i>
+      </a>
+      <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hồ Sơ Cá Nhân</span>
+      <div class="w-9 h-9"></div> <!-- Spacer căn giữa -->
+    </div>
+
+    <!-- Header Tiêu đề & Avatar Preview -->
+    <div class="mb-5 text-center">
+      <div class="relative inline-block mb-3">
+        <div id="avatarPreview" class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-red-600 to-amber-500 text-white flex items-center justify-center text-3xl font-bold shadow-xl ring-4 ring-red-50 mx-auto">
+          {{ full_name|default:request.user.first_name|default:request.user.username|slice:":1"|upper }}
+        </div>
+        <div class="absolute -bottom-1 -right-1 w-7 h-7 bg-white text-slate-700 rounded-full border border-slate-200 shadow-md flex items-center justify-center text-xs">
+          <i class="fa-solid fa-pen text-[10px]"></i>
+        </div>
+      </div>
+      
+      <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Chỉnh Sửa Hồ Sơ</h1>
+      <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+        Cập nhật thông tin cá nhân chính xác để đội cứu hộ SafeXe dễ dàng liên lạc khi khẩn cấp.
+      </p>
+    </div>
+
+    <!-- Hộp thông báo lỗi Client-side validation (nếu có) -->
+    <div id="clientErrorBox" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 flex items-start gap-2">
+      <i class="fa-solid fa-triangle-exclamation mt-0.5 text-red-500 shrink-0"></i>
+      <span id="clientErrorMessage"></span>
+    </div>
+
+    <!-- Form Chỉnh Sửa Thông Tin Cá Nhân -->
+    <form method="POST" action="{% url 'edit_profile' %}" id="editProfileForm" class="space-y-4 text-xs" novalidate>
+      {% csrf_token %}
+
+      <!-- 1. Họ và tên -->
+      <div>
+        <label for="fullName" class="block font-semibold text-slate-700 mb-1.5">
+          Họ và tên <span class="text-red-500">*</span>
+        </label>
+        <div class="bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+          <i class="fa-regular fa-user text-slate-400 text-sm"></i>
+          <input 
+            type="text" 
+            name="full_name" 
+            id="fullName" 
+            required 
+            value="{{ full_name|default:request.user.first_name }}"
+            placeholder="Nhập họ và tên đầy đủ của bạn" 
+            class="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+          />
+        </div>
+        <p id="nameError" class="text-[11px] text-red-500 mt-1 hidden"></p>
+      </div>
+
+      <!-- 2. Số điện thoại & CCCD -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <div>
+          <label for="phone" class="block font-semibold text-slate-700 mb-1">
+            Số điện thoại <span class="text-red-500">*</span>
+          </label>
+          <div class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+            <i class="fa-solid fa-phone text-slate-400 text-xs"></i>
+            <input 
+              type="tel" 
+              name="phone" 
+              id="phone" 
+              required 
+              maxlength="10"
+              value="{{ phone|default:request.user.profile.phone|default:request.user.username }}"
+              placeholder="0912345678" 
+              class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none font-mono"
+            />
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1">10 chữ số</p>
+        </div>
+
+        <div>
+          <label for="cccd" class="block font-semibold text-slate-700 mb-1">
+            Số CCCD <span class="text-red-500">*</span>
+          </label>
+          <div class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 flex items-center gap-2 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+            <i class="fa-regular fa-id-card text-slate-400 text-xs"></i>
+            <input 
+              type="text" 
+              name="cccd" 
+              id="cccd" 
+              required 
+              maxlength="12"
+              value="{{ cccd|default:request.user.profile.id_card|default:'' }}"
+              placeholder="12 chữ số" 
+              class="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none font-mono"
+            />
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1">12 chữ số</p>
+        </div>
+      </div>
+
+      <!-- 3. Địa chỉ Email -->
+      <div>
+        <label for="email" class="block font-semibold text-slate-700 mb-1.5">
+          Địa chỉ Email <span class="text-red-500">*</span>
+        </label>
+        <div class="bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 focus-within:ring-2 focus-within:ring-red-500 focus-within:border-transparent transition">
+          <i class="fa-regular fa-envelope text-slate-400 text-sm"></i>
+          <input 
+            type="email" 
+            name="email" 
+            id="email" 
+            required
+            value="{{ email|default:request.user.email }}"
+            placeholder="vidu@safexe.vn" 
+            class="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+          />
+        </div>
+        <p id="emailError" class="text-[11px] text-red-500 mt-1 hidden"></p>
+      </div>
+
+      <!-- Khung thông tin điều khoản -->
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-start gap-2.5 text-slate-500 text-[11px]">
+        <i class="fa-solid fa-shield-halved text-red-500 mt-0.5 text-xs"></i>
+        <span>Thông tin cá nhân (SĐT, CCCD) được bảo mật nghiêm ngặt để phục vụ xác minh cứu hộ khẩn cấp.</span>
+      </div>
+
+      <!-- Cụm nút hành động -->
+      <div class="pt-2 space-y-2.5">
+        <!-- Main flow bước 6: Người dùng chọn Lưu -->
+        <button 
+          type="submit" 
+          id="btnSaveProfile"
+          class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 transition duration-200"
+        >
+          <i class="fa-solid fa-floppy-disk text-base"></i>
+          <span>Lưu Thay Đổi</span>
+        </button>
+
+        <!-- Nút Hủy thao tác & Quay lại -->
+        <a 
+          href="{% url 'account' %}" 
+          id="btnCancelProfile"
+          class="w-full bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-700 py-2.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition"
+        >
+          <i class="fa-solid fa-xmark"></i>
+          <span>Hủy Bỏ & Quay Lại</span>
+        </a>
+      </div>
+
+    </form>
+  </div>
+
+  <p class="text-center text-[11px] text-slate-400 mt-4">SafeXe Profile Manager • Use Case UC-PROFILE-01</p>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // 1. Cập nhật Avatar preview chữ cái đầu theo Họ và tên khi người dùng gõ
+  const fullNameInput = document.getElementById('fullName');
+  const avatarPreview = document.getElementById('avatarPreview');
+
+  fullNameInput.addEventListener('input', function() {
+    const trimmed = this.value.trim();
+    if (trimmed.length > 0) {
+      avatarPreview.textContent = trimmed.charAt(0).toUpperCase();
+    } else {
+      avatarPreview.textContent = '?';
+    }
+  });
+
+  // 2. Chỉ cho phép nhập số trên SĐT và CCCD
+  ['phone', 'cccd'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+      });
+    }
+  });
+
+  // 3. Client-side validation kiểm tra tính hợp lệ trước khi submit
+  const form = document.getElementById('editProfileForm');
+  const errorBox = document.getElementById('clientErrorBox');
+  const errorMessage = document.getElementById('clientErrorMessage');
+  const emailInput = document.getElementById('email');
+  const phoneInput = document.getElementById('phone');
+  const cccdInput = document.getElementById('cccd');
+
+  function showError(msg) {
+    errorMessage.textContent = msg;
+    errorBox.classList.remove('hidden');
+    errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function hideError() {
+    errorBox.classList.add('hidden');
+    errorMessage.textContent = '';
+  }
+
+  form.addEventListener('submit', function(e) {
+    hideError();
+    const name = fullNameInput.value.trim();
+    const phone = phoneInput.value.trim();
+    const cccd = cccdInput.value.trim();
+    const email = emailInput.value.trim();
+
+    if (!name || !phone || !cccd || !email) {
+      e.preventDefault();
+      showError('Vui lòng nhập đầy đủ tất cả các trường thông tin bắt buộc.');
+      return;
+    }
+
+    if (!/^0\d{9}$/.test(phone)) {
+      e.preventDefault();
+      showError('Số điện thoại phải gồm đúng 10 chữ số (bắt đầu bằng số 0).');
+      phoneInput.focus();
+      return;
+    }
+
+    if (!/^\d{12}$/.test(cccd)) {
+      e.preventDefault();
+      showError('Số CCCD phải gồm đúng 12 chữ số.');
+      cccdInput.focus();
+      return;
+    }
+
+    const emailRegex = /^[\w\.-]+@[\w\.-]+\.\w+$/;
+    if (!emailRegex.test(email)) {
+      e.preventDefault();
+      showError('Định dạng email không hợp lệ. Vui lòng kiểm tra lại (VD: example@safexe.vn).');
+      emailInput.focus();
+      return;
+    }
+  });
+</script>
+{% endblock %}
