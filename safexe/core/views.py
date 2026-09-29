@@ -107,3 +107,57 @@ def rating_feedback_view(request):
         "helper_name": "Nguyễn Văn Hùng",
     }
     return render(request, "reviews/rating_feedback.html", context)
+
+
+# ==========================================
+# 6. USE CASE 03: CHIA SẺ VỊ TRÍ GPS (GPS SHARING)
+# ==========================================
+def share_location_view(request):
+    """
+    Use Case 03: Chia sẻ vị trí GPS thời gian thực.
+    Người dùng cấp quyền GPS, hệ thống hiển thị và liên tục cập nhật trên bản đồ.
+    """
+    # Lấy thông tin tọa độ lưu trong session (nếu có)
+    last_location = request.session.get("user_last_location", {
+        "latitude": 16.0748,
+        "longitude": 108.1532,
+        "accuracy": 10,
+        "address": "120 Hoàng Minh Thảo, P. Hòa Khánh Nam, Liên Chiểu, Đà Nẵng",
+    })
+    context = {
+        "user_name": "Nguyễn Minh",
+        "user_phone": "0987.654.321",
+        "last_location": last_location,
+    }
+    return render(request, "rescue/share_location.html", context)
+
+
+def update_location_api(request):
+    """
+    API endpoint nhận tọa độ cập nhật theo thời gian thực từ browser (watchPosition).
+    Lưu vào session của người dùng để phục vụ các chức năng cứu hộ.
+    """
+    import json
+    from django.http import JsonResponse
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8")) if request.body else request.POST
+            lat = data.get("latitude")
+            lng = data.get("longitude")
+            accuracy = data.get("accuracy", 10)
+            address = data.get("address", "")
+
+            request.session["user_last_location"] = {
+                "latitude": lat,
+                "longitude": lng,
+                "accuracy": accuracy,
+                "address": address,
+            }
+            return JsonResponse({
+                "status": "success",
+                "message": "Đã cập nhật vị trí GPS thành công",
+                "data": {"latitude": lat, "longitude": lng, "accuracy": accuracy}
+            })
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "Phương thức không được hỗ trợ"}, status=405)

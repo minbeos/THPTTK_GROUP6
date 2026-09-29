@@ -44,9 +44,9 @@
           <span class="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
             <i class="fa-solid fa-location-dot text-red-600"></i> Vị trí gặp sự cố (*)
           </span>
-          <button type="button" id="btnRefreshGPS" class="text-xs text-red-600 font-semibold hover:underline flex items-center gap-1">
-            <i class="fa-solid fa-crosshairs"></i> Định vị lại
-          </button>
+          <a href="gps.html" id="btnRefreshGPS" class="text-xs text-red-600 font-semibold hover:underline flex items-center gap-1" title="Mở trang chia sẻ vị trí GPS thời gian thực">
+            <i class="fa-solid fa-crosshairs"></i> Chia sẻ GPS
+          </a>
         </div>
         <div class="relative">
           <input 
@@ -269,6 +269,15 @@
         : issueSelect.options[issueSelect.selectedIndex].text;
       
       alert(`Đã phát tín hiệu cứu hộ thành công!\n- Loại phương tiện: ${vehicleName}\n- Sự cố gặp phải: ${issueName}\n\nHệ thống SafeXe đang quét người hỗ trợ trong bán kính 10km quanh bạn.`);
+    });
+
+    // 5. Tự động nhận địa chỉ nếu được truyền từ trang chia sẻ vị trí (gps.html)
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const addr = urlParams.get('addr');
+      if (addr) {
+        document.getElementById('locationInput').value = decodeURIComponent(addr);
+      }
     });
   </script>
 </body>

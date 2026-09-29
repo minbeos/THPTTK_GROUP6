@@ -18,4 +18,8 @@ urlpatterns = [
 
     # 5. Đánh giá sao và nhận xét
     path("rescue/rating/", views.rating_feedback_view, name="rating_feedback"),
+
+    # 6. Use case 03: Chia sẻ vị trí GPS thời gian thực
+    path("rescue/share-location/", views.share_location_view, name="share_location"),
+    path("api/update-location/", views.update_location_api, name="update_location_api"),
 ]

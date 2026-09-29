@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SafeXe - Chia Sẻ Vị Trí GPS (UC-03)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet CSS & JS for Interactive GPS Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* Radar pulse animation for GPS marker */
+    .gps-radar {
+      position: relative;
+    }
+    .gps-radar::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50px;
+      height: 50px;
+      background: rgba(239, 68, 68, 0.35);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: radar-pulse 2s infinite ease-out;
+      pointer-events: none;
+    }
+    @keyframes radar-pulse {
+      0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      padding: 2px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex justify-center p-0 sm:p-4">
+
+  <!-- Mobile Screen Container (Đồng bộ chuẩn giao diện với file a.html) -->
+  <div class="w-full max-w-md bg-white min-h-screen sm:min-h-0 sm:rounded-3xl shadow-xl flex flex-col overflow-hidden pb-6">
+    
+    <!-- Top Header (Chuẩn SafeXe màu đỏ) -->
+    <header class="bg-red-600 text-white px-5 py-4 flex items-center justify-between sticky top-0 z-30 shadow-md">
+      <div class="flex items-center gap-3">
+        <a href="a.html" class="text-white hover:opacity-80 p-1" title="Quay lại">
+          <i class="fa-solid fa-arrow-left text-lg"></i>
+        </a>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-lg leading-tight">Chia sẻ vị trí GPS</h1>
+            <span class="bg-red-800 text-[10px] font-semibold px-2 py-0.5 rounded-full text-red-100">UC-03</span>
+          </div>
+          <p id="headerStatus" class="text-xs text-red-100 flex items-center gap-1.5 mt-0.5">
+            <span id="headerDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span id="headerStatusText">Đang khởi tạo định vị...</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Pre-condition: Người dùng đã đăng nhập -->
+      <div class="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-xs px-2.5 py-1.5 rounded-full transition">
+        <i class="fa-solid fa-circle-user text-amber-300 text-sm"></i>
+        <span class="font-medium">Nguyễn Minh</span>
+      </div>
+    </header>
+
+    <!-- Khu vực hiển thị thông báo luồng ngoại lệ & nghiệp vụ (Exception Flows) -->
+    <div id="alertBoxArea" class="px-4 pt-3 space-y-2">
+
+      <!-- Alt Flow 2a: Đã cấp quyền trước đó -->
+      <div id="alertAlt2a" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-2xl text-xs flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+        <span><strong>Tự động nhận diện GPS:</strong> Đã cấp quyền từ trước, hệ thống đang lấy vị trí hiện tại.</span>
+      </div>
+
+      <!-- Exception Flow 2b: Người dùng không cho phép truy cập vị trí GPS -->
+      <div id="alertExc2b" class="hidden bg-red-50 border-2 border-red-500 text-red-800 p-3 rounded-2xl text-xs space-y-1.5">
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-red-600 text-sm mt-0.5"></i>
+          <div>
+            <strong class="font-bold text-red-700">“Vui lòng cho phép truy cập vị trí để sử dụng dịch vụ.”</strong>
+            <p class="text-[11px] text-red-600 mt-0.5">Theo quy định nghiệp vụ, bạn không thể sử dụng chức năng cứu hộ nếu không xác định được vị trí.</p>
+          </div>
+        </div>
+        <button type="button" onclick="startGPS()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
+          <i class="fa-solid fa-crosshairs"></i> Cấp quyền lại
+        </button>
+      </div>
+
+      <!-- Exception Flow 3a: Không xác định được vị trí GPS -->
+      <div id="alertExc3a" class="hidden bg-amber-50 border-2 border-amber-400 text-amber-800 p-3 rounded-2xl text-xs space-y-1.5">
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-satellite-dish text-amber-600 text-sm mt-0.5"></i>
+          <div>
+            <strong class="font-bold text-amber-800">“Không thể xác định vị trí hiện tại, vui lòng kiểm tra GPS của thiết bị.”</strong>
+            <p class="text-[11px] text-amber-700 mt-0.5">Vui lòng bật định vị phần cứng trên điện thoại/máy tính và thử lại.</p>
+          </div>
+        </div>
+        <button type="button" onclick="startGPS()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
+          <i class="fa-solid fa-arrows-rotate"></i> Thử lại ngay
+        </button>
+      </div>
+
+      <!-- Exception Flow 4a: Mất kết nối hoặc không thể cập nhật vị trí GPS -->
+      <div id="alertExc4a" class="hidden bg-orange-50 border border-orange-300 text-orange-900 p-3 rounded-2xl text-xs flex items-start gap-2">
+        <i class="fa-solid fa-triangle-exclamation text-orange-600 text-sm mt-0.5"></i>
+        <div>
+          <span>Mất kết nối hoặc tín hiệu GPS yếu. Hệ thống tạm thời sử dụng <strong>vị trí gần nhất đã xác định</strong> lúc <span id="lastKnownTime" class="font-bold underline">--:--:--</span>.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Khung Bản Đồ Thời Gian Thực (Main flow 3 & 4) -->
+    <div class="relative w-full h-[320px] bg-slate-200 mt-2">
+      <div id="map" class="w-full h-full"></div>
+
+      <!-- Lớp phủ khóa bản đồ khi bị từ chối quyền (2b) -->
+      <div id="mapLockOverlay" class="hidden absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-4 text-center text-white space-y-2">
+        <i class="fa-solid fa-location-slash text-3xl text-red-500"></i>
+        <p class="font-bold text-sm">Chưa có quyền vị trí GPS</p>
+        <p class="text-xs text-slate-200 max-w-xs">Nhấn nút bên dưới để cấp quyền định vị cho SafeXe.</p>
+        <button type="button" onclick="startGPS()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow-md">
+          Cho phép truy cập vị trí
+        </button>
+      </div>
+
+      <!-- Nút điều khiển nhanh trên map -->
+      <div class="absolute top-3 right-3 flex flex-col gap-2 z-10">
+        <button type="button" onclick="centerMap()" class="w-9 h-9 bg-white hover:bg-slate-50 text-slate-700 hover:text-red-600 rounded-xl shadow-md flex items-center justify-center text-xs transition border border-slate-200" title="Căn giữa vị trí của bạn">
+          <i class="fa-solid fa-crosshairs"></i>
+        </button>
+      </div>
+
+      <!-- Badge trạng thái trực tiếp -->
+      <div class="absolute bottom-3 left-3 z-10">
+        <div id="livePill" class="bg-white/95 backdrop-blur-sm border border-slate-200 px-3 py-1 rounded-full shadow-md text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+          <span id="livePillDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span id="livePillLabel">Đang cập nhật thời gian thực</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thông Tin Vị Trí & Điều Khiển (Bottom Sheet) -->
+    <div class="p-4 space-y-4 flex-1 text-sm">
+
+      <!-- 1. Bật/Tắt chế độ chia sẻ -->
+      <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl p-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-tower-broadcast animate-pulse"></i>
+          </div>
+          <div>
+            <div class="font-bold text-slate-800 text-xs">Chia sẻ vị trí GPS liên tục</div>
+            <div class="text-[10px] text-slate-500">Giúp đội cứu hộ xác định lộ trình chính xác</div>
+          </div>
+        </div>
+
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="toggleShare" class="sr-only peer" checked onchange="handleToggleShare(this)">
+          <div class="w-10 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+        </label>
+      </div>
+
+      <!-- 2. Thẻ hiển thị địa chỉ & tọa độ GPS -->
+      <div class="bg-red-50/60 border border-red-200/80 rounded-2xl p-3.5 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+            <i class="fa-solid fa-location-dot text-red-600"></i> Vị trí hiện tại của bạn (*)
+          </span>
+          <span class="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">
+            Sai số: ± <span id="accuracyVal">5</span>m
+          </span>
+        </div>
+
+        <!-- Ô địa chỉ chi tiết -->
+        <div class="relative">
+          <input 
+            type="text" 
+            id="addressInput" 
+            readonly 
+            value="Đang xác định địa chỉ từ tọa độ..."
+            class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-700 pr-8 shadow-sm focus:outline-none" 
+          />
+          <i id="addressCheckIcon" class="fa-solid fa-circle-check text-emerald-500 absolute right-2.5 top-2.5 text-xs"></i>
+        </div>
+
+        <!-- Tọa độ kinh độ, vĩ độ và thời gian cập nhật -->
+        <div class="grid grid-cols-2 gap-2 text-[11px] pt-1">
+          <div class="bg-white p-2 rounded-xl border border-slate-200 flex items-center justify-between">
+            <span class="text-slate-400">Tọa độ:</span>
+            <span id="coordsDisplay" class="font-mono font-bold text-slate-700 text-[10px]">16.0748, 108.1532</span>
+          </div>
+          <div class="bg-white p-2 rounded-xl border border-slate-200 flex items-center justify-between">
+            <span class="text-slate-400">Cập nhật:</span>
+            <span id="lastUpdatedDisplay" class="font-mono font-bold text-slate-700 text-[10px]">--:--:--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Cụm nút Hành Động Cứu Hộ (Business rule: Bắt buộc có GPS) -->
+      <div class="space-y-2 pt-2">
+        <button 
+          type="button" 
+          id="btnUseLocation"
+          onclick="useLocationForRescue()"
+          class="w-full bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-red-500/30 flex items-center justify-center gap-2 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i class="fa-solid fa-truck-medical"></i>
+          DÙNG VỊ TRÍ NÀY ĐỂ GỌI CỨU HỘ
+        </button>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button 
+            type="button" 
+            onclick="copyLocationLink()"
+            class="w-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 text-xs transition border border-slate-200"
+          >
+            <i class="fa-solid fa-share-nodes text-slate-500"></i>
+            Chia sẻ vị trí
+          </button>
+          <a 
+            href="a.html"
+            class="w-full bg-red-50 hover:bg-red-100 text-red-700 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 text-xs transition border border-red-200 text-center"
+          >
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+            Về trang gửi sự cố
+          </a>
+        </div>
+      </div>
+
+      <!-- 4. Hộp công cụ kiểm thử kịch bản đồ án (Dành cho kiểm tra đầy đủ các luồng) -->
+      <div class="border-t border-slate-200 pt-3">
+        <details class="text-xs group">
+          <summary class="cursor-pointer text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center justify-between list-none">
+            <span class="flex items-center gap-1">
+              <i class="fa-solid fa-flask text-amber-500"></i>
+              Bảng kiểm thử Use Case 03 (Thuyết trình / Báo cáo)
+            </span>
+            <i class="fa-solid fa-chevron-down text-[10px] group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="mt-2 grid grid-cols-2 gap-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200 text-[10px]">
+            <button onclick="simulateScenario('normal')" class="p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-left">
+              ✓ Main Flow / 2a: Có GPS
+            </button>
+            <button onclick="simulateScenario('denied')" class="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-bold text-left">
+              ⚠ 2b: Từ chối quyền GPS
+            </button>
+            <button onclick="simulateScenario('unavailable')" class="p-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-left">
+              ⚠ 3a: Lỗi thiết bị GPS
+            </button>
+            <button onclick="simulateScenario('lost')" class="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-900 font-bold text-left">
+              ⚠ 4a: Mất kết nối (Dùng cũ)
+            </button>
+          </div>
+        </details>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- SCRIPT LOGIC XỬ LÝ USE CASE 03 -->
+  <script>
+    // Tọa độ khởi tạo (Đại học Bách Khoa, Đà Nẵng)
+    let currentLat = 16.0748;
+    let currentLng = 108.1532;
+    let lastKnownLat = 16.0748;
+    let lastKnownLng = 108.1532;
+    let lastKnownTimestamp = null;
+    let currentAccuracy = 5;
+
+    let map = null;
+    let userMarker = null;
+    let accCircle = null;
+    let watchId = null;
+    let isTracking = true;
+    let simInterval = null;
+
+    // DOM Elements
+    const headerStatusText = document.getElementById('headerStatusText');
+    const headerDot = document.getElementById('headerDot');
+    const alertAlt2a = document.getElementById('alertAlt2a');
+    const alertExc2b = document.getElementById('alertExc2b');
+    const alertExc3a = document.getElementById('alertExc3a');
+    const alertExc4a = document.getElementById('alertExc4a');
+    const lastKnownTime = document.getElementById('lastKnownTime');
+    const mapLockOverlay = document.getElementById('mapLockOverlay');
+    const livePillDot = document.getElementById('livePillDot');
+    const livePillLabel = document.getElementById('livePillLabel');
+    const addressInput = document.getElementById('addressInput');
+    const coordsDisplay = document.getElementById('coordsDisplay');
+    const lastUpdatedDisplay = document.getElementById('lastUpdatedDisplay');
+    const accuracyVal = document.getElementById('accuracyVal');
+    const btnUseLocation = document.getElementById('btnUseLocation');
+
+    // 1. Khởi tạo Bản đồ Leaflet
+    function initMap(lat, lng) {
+      if (map) return;
+      map = L.map('map', { zoomControl: false, attributionControl: false }).setView([lat, lng], 16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+      // Marker người dùng gặp sự cố (có vòng sóng tỏa radar)
+      const userIcon = L.divIcon({
+        className: 'gps-marker',
+        html: `
+          <div class="gps-radar flex flex-col items-center">
+            <div class="w-8 h-8 rounded-full bg-red-600 border-2 border-white text-white flex items-center justify-center shadow-lg">
+              <i class="fa-solid fa-person-falling-burst text-xs"></i>
+            </div>
+          </div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
+      userMarker.bindPopup('<strong class="text-xs text-red-600">Vị trí của bạn</strong><br><span class="text-[10px] text-slate-500">Đang chia sẻ thời gian thực</span>');
+
+      accCircle = L.circle([lat, lng], {
+        radius: currentAccuracy,
+        color: '#ef4444',
+        fillColor: '#ef4444',
+        fillOpacity: 0.15,
+        weight: 1
+      }).addTo(map);
+
+      // Thêm điểm cứu hộ gần đó (Mô phỏng thợ cứu hộ xung quanh)
+      const rescuerIcon = L.divIcon({
+        className: 'rescuer-icon',
+        html: `<div class="w-7 h-7 rounded-full bg-slate-800 border-2 border-white text-amber-400 flex items-center justify-center shadow-md text-xs"><i class="fa-solid fa-motorcycle"></i></div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+      L.marker([lat + 0.003, lng + 0.002], { icon: rescuerIcon }).addTo(map)
+        .bindPopup('<strong class="text-xs">Thợ Nguyễn Văn Hùng</strong><br><span class="text-[10px] text-slate-500">Cách bạn: 450m</span>');
+    }
+
+    // 2. Main Flow & Alternative Flow 2a: Yêu cầu quyền & Lấy vị trí
+    function startGPS() {
+      hideAllAlerts();
+      if (simInterval) clearInterval(simInterval);
+
+      headerStatusText.textContent = 'Đang yêu cầu quyền truy cập GPS...';
+      headerDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+
+      if (!('geolocation' in navigator)) {
+        showException3a();
+        return;
+      }
+
+      // Alternative flow 2a: Kiểm tra nếu đã được cấp quyền trước đó
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'geolocation' }).then(res => {
+          if (res.state === 'granted') {
+            alertAlt2a.classList.remove('hidden');
+            setTimeout(() => alertAlt2a.classList.add('hidden'), 4000);
+          }
+          executeGeolocation();
+        }).catch(() => executeGeolocation());
+      } else {
+        executeGeolocation();
+      }
+    }
+
+    function executeGeolocation() {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+
+      const options = { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 };
+
+      // Lấy vị trí tức thời (Main flow 2 & 3)
+      navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, options);
+
+      // Cập nhật vị trí GPS liên tục thời gian thực (Main flow 4 & Non-functional)
+      if (isTracking) {
+        watchId = navigator.geolocation.watchPosition(onGPSSuccess, onGPSError, options);
+      }
+    }
+
+    // Khi lấy vị trí thành công (Main flow 2, 3, 4)
+    function onGPSSuccess(pos) {
+      hideAllAlerts();
+      mapLockOverlay.classList.add('hidden');
+      btnUseLocation.removeAttribute('disabled');
+
+      currentLat = pos.coords.latitude;
+      currentLng = pos.coords.longitude;
+      currentAccuracy = Math.round(pos.coords.accuracy || 5);
+      const now = new Date(pos.timestamp || Date.now());
+
+      lastKnownLat = currentLat;
+      lastKnownLng = currentLng;
+      lastKnownTimestamp = now;
+
+      // Cập nhật giao diện
+      headerStatusText.textContent = 'Đang chia sẻ thời gian thực';
+      headerDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+
+      livePillDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+      livePillLabel.textContent = 'Đang cập nhật thời gian thực';
+
+      coordsDisplay.textContent = `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+      accuracyVal.textContent = currentAccuracy;
+      lastUpdatedDisplay.textContent = now.toLocaleTimeString('vi-VN');
+
+      if (!map) {
+        initMap(currentLat, currentLng);
+      } else {
+        userMarker.setLatLng([currentLat, currentLng]);
+        accCircle.setLatLng([currentLat, currentLng]);
+        accCircle.setRadius(currentAccuracy);
+        map.panTo([currentLat, currentLng]);
+      }
+
+      // Lấy địa chỉ thực tế (Reverse Geocoding)
+      fetchAddress(currentLat, currentLng);
+    }
+
+    // Xử lý lỗi ngoại lệ (Exceptions 2b, 3a, 4a)
+    function onGPSError(err) {
+      console.warn('GPS Error code:', err.code);
+      if (err.code === err.PERMISSION_DENIED) {
+        showException2b(); // 2b: Người dùng từ chối
+      } else if (err.code === err.POSITION_UNAVAILABLE || err.code === err.TIMEOUT) {
+        if (lastKnownTimestamp) {
+          showException4a(); // 4a: Mất kết nối -> Dùng vị trí gần nhất
+        } else {
+          showException3a(); // 3a: Không xác định được
+        }
+      } else {
+        showException3a();
+      }
+    }
+
+    // 2b: Không cho phép truy cập vị trí
+    function showException2b() {
+      hideAllAlerts();
+      alertExc2b.classList.remove('hidden');
+      mapLockOverlay.classList.remove('hidden');
+
+      headerStatusText.textContent = 'Bị từ chối quyền truy cập GPS';
+      headerDot.className = 'w-2 h-2 rounded-full bg-red-400';
+
+      livePillDot.className = 'w-2 h-2 rounded-full bg-red-500';
+      livePillLabel.textContent = 'Chưa cấp quyền GPS';
+
+      addressInput.value = 'Chưa cấp quyền định vị GPS';
+      btnUseLocation.setAttribute('disabled', 'true');
+    }
+
+    // 3a: Không thể xác định vị trí hiện tại
+    function showException3a() {
+      hideAllAlerts();
+      alertExc3a.classList.remove('hidden');
+
+      headerStatusText.textContent = 'Không xác định được GPS';
+      headerDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+
+      livePillDot.className = 'w-2 h-2 rounded-full bg-amber-500';
+      livePillLabel.textContent = 'Không tìm thấy GPS';
+
+      addressInput.value = 'Vui lòng kiểm tra GPS của thiết bị';
+      btnUseLocation.setAttribute('disabled', 'true');
+    }
+
+    // 4a: Mất kết nối hoặc không cập nhật được -> dùng vị trí gần nhất
+    function showException4a() {
+      hideAllAlerts();
+      alertExc4a.classList.remove('hidden');
+      lastKnownTime.textContent = lastKnownTimestamp ? lastKnownTimestamp.toLocaleTimeString('vi-VN') : 'vài phút trước';
+
+      headerStatusText.textContent = 'Tạm dùng vị trí gần nhất';
+      headerDot.className = 'w-2 h-2 rounded-full bg-orange-400 animate-pulse';
+
+      livePillDot.className = 'w-2 h-2 rounded-full bg-orange-500';
+      livePillLabel.textContent = 'Tín hiệu GPS yếu';
+
+      coordsDisplay.textContent = `${lastKnownLat.toFixed(5)}, ${lastKnownLng.toFixed(5)} (Cũ)`;
+      btnUseLocation.removeAttribute('disabled');
+    }
+
+    // Ẩn tất cả cảnh báo
+    function hideAllAlerts() {
+      alertAlt2a.classList.add('hidden');
+      alertExc2b.classList.add('hidden');
+      alertExc3a.classList.add('hidden');
+      alertExc4a.classList.add('hidden');
+    }
+
+    // Căn giữa map
+    function centerMap() {
+      if (map) map.setView([currentLat, currentLng], 16);
+    }
+
+    // Bật/tắt công tắc chia sẻ
+    function handleToggleShare(toggle) {
+      isTracking = toggle.checked;
+      if (isTracking) {
+        startGPS();
+      } else {
+        if (watchId) navigator.geolocation.clearWatch(watchId);
+        headerStatusText.textContent = 'Đã tạm dừng chia sẻ GPS';
+        headerDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        livePillDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        livePillLabel.textContent = 'Đã tắt chia sẻ';
+      }
+    }
+
+    // Tra cứu địa chỉ
+    async function fetchAddress(lat, lng) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+          headers: { 'Accept-Language': 'vi' }
+        });
+        const data = await res.json();
+        if (data && data.display_name) {
+          addressInput.value = data.display_name;
+        } else {
+          addressInput.value = `Tọa độ: ${lat.toFixed(5)}, ${lng.toFixed(5)} (Gần Liên Chiểu, Đà Nẵng)`;
+        }
+      } catch (e) {
+        addressInput.value = `120 Hoàng Minh Thảo, P. Hòa Khánh Nam, Liên Chiểu, Đà Nẵng`;
+      }
+    }
+
+    // Dùng vị trí này gọi cứu hộ (Main flow 5)
+    function useLocationForRescue() {
+      const address = encodeURIComponent(addressInput.value);
+      // Chuyển sang a.html kèm tọa độ và địa chỉ
+      window.location.href = `a.html?lat=${currentLat}&lng=${currentLng}&addr=${address}`;
+    }
+
+    // Sao chép link vị trí
+    function copyLocationLink() {
+      const url = `${window.location.href.split('?')[0]}?lat=${currentLat}&lng=${currentLng}`;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => alert(`Đã sao chép link vị trí GPS của bạn:\n${url}`));
+      } else {
+        prompt('Sao chép liên kết chia sẻ vị trí:', url);
+      }
+    }
+
+    // Mô phỏng các kịch bản kiểm thử đồ án
+    function simulateScenario(type) {
+      if (simInterval) clearInterval(simInterval);
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+
+      if (type === 'normal') {
+        alertAlt2a.classList.remove('hidden');
+        setTimeout(() => alertAlt2a.classList.add('hidden'), 3000);
+        let mockLat = 16.0748;
+        let mockLng = 108.1532;
+        onGPSSuccess({ coords: { latitude: mockLat, longitude: mockLng, accuracy: 6 }, timestamp: Date.now() });
+
+        // Giả lập di chuyển thời gian thực
+        simInterval = setInterval(() => {
+          mockLat += (Math.random() - 0.5) * 0.0002;
+          mockLng += (Math.random() - 0.5) * 0.0002;
+          onGPSSuccess({ coords: { latitude: mockLat, longitude: mockLng, accuracy: 5 }, timestamp: Date.now() });
+        }, 2500);
+
+      } else if (type === 'denied') {
+        showException2b();
+      } else if (type === 'unavailable') {
+        lastKnownTimestamp = null;
+        showException3a();
+      } else if (type === 'lost') {
+        if (!lastKnownTimestamp) lastKnownTimestamp = new Date(Date.now() - 120000);
+        showException4a();
+      }
+    }
+
+    // Sự kiện mất mạng / có mạng của trình duyệt
+    window.addEventListener('offline', showException4a);
+    window.addEventListener('online', () => { if (isTracking) startGPS(); });
+
+    // Trigger: Tự động chạy khi truy cập trang web (Main flow 1)
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap(currentLat, currentLng);
+      startGPS();
+    });
+  </script>
+</body>
+</html>
