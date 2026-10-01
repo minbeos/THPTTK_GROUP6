@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+
+{% block title %}SafeXe - Tiến Trình & Trạng Thái Ca Cứu Hộ (Dành Cho Nạn Nhân){% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col bg-slate-50 pb-6">
+
+  <!-- 1. Banner Hồ Sơ & Trạng Thái Của Nạn Nhân -->
+  <div class="bg-gradient-to-r from-red-700 via-red-600 to-slate-900 text-white p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <img 
+            src="{{ profile.avatar_url|default:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80' }}" 
+            alt="Avatar Nạn Nhân" 
+            class="w-12 h-12 rounded-full object-cover border-2 {% if active_request %}border-amber-400{% else %}border-emerald-400{% endif %}"
+          />
+          <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900 flex items-center justify-center text-[8px] font-bold {% if active_request %}bg-amber-500 text-white{% else %}bg-emerald-500 text-white{% endif %}">
+            <i class="fa-solid {% if active_request %}fa-triangle-exclamation{% else %}fa-shield-halved{% endif %}"></i>
+          </span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="font-bold text-sm leading-tight">{{ current_user.get_full_name|default:current_user.username }}</h2>
+            <span class="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+              Người gặp sự cố
+            </span>
+          </div>
+          <p class="text-[11px] text-red-100 mt-0.5">
+            SĐT: <span class="font-mono text-white">{{ profile.phone|default:'0912 345 678' }}</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Huy hiệu tình trạng hiện tại của người gặp nạn -->
+      <div>
+        {% if active_request and active_request.status == 'PENDING' %}
+          <div class="bg-amber-400/20 border border-amber-300 text-amber-200 px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Đang tìm thợ</span>
+          </div>
+        {% elif active_request and active_request.status in 'ACCEPTED,IN_PROGRESS,ARRIVED' %}
+          <div class="bg-emerald-400/20 border border-emerald-300 text-emerald-200 px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Thợ đang hỗ trợ</span>
+          </div>
+        {% else %}
+          <div class="bg-white/10 border border-white/20 text-slate-200 px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>Bình thường</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Thanh thông số tổng quan của Nạn nhân -->
+    <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/10 text-center">
+      <div class="bg-black/15 rounded-xl p-1.5">
+        <span class="text-[10px] text-red-200 block">Yêu cầu đã gửi</span>
+        <span class="text-xs font-black text-white">{{ total_requests }} ca</span>
+      </div>
+      <div class="bg-black/15 rounded-xl p-1.5">
+        <span class="text-[10px] text-red-200 block">Cứu hộ an toàn</span>
+        <span class="text-xs font-black text-amber-300">{{ completed_requests }} ca</span>
+      </div>
+      <div class="bg-black/15 rounded-xl p-1.5">
+        <span class="text-[10px] text-red-200 block">Vị trí hiện tại</span>
+        <span class="text-[10px] font-semibold text-emerald-300 truncate block">Hòa Khánh, ĐN</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Khu Vực: TIẾN TRÌNH CỨU HỘ CỦA BẠN (ACTIVE RESCUE) -->
+  <div class="p-3">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+        <i class="fa-solid fa-life-ring text-red-600"></i> Tiến trình cứu hộ của bạn
+      </h3>
+      {% if active_request %}
+        <span class="bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200">
+          Mã #{{ active_request.code }}
+        </span>
+      {% endif %}
+    </div>
+
+    {% if active_request %}
+      {% if active_request.status == 'PENDING' %}
+        <!-- TH 1: YÊU CẦU ĐANG CHỜ THỢ TIẾP NHẬN (PENDING) -->
+        <div class="bg-white border-2 border-amber-300 rounded-2xl p-4 shadow-sm space-y-3">
+          <!-- Header tình trạng phát tín hiệu -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="bg-slate-900 text-white font-extrabold text-[11px] px-2 py-0.5 rounded-lg">#{{ active_request.code }}</span>
+              <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <i class="fa-solid fa-radar animate-spin text-amber-600"></i> Đang tìm thợ (Bán kính 10km)
+              </span>
+            </div>
+            <span class="text-[10px] text-slate-400">
+              <i class="fa-regular fa-clock"></i> {{ active_request.created_at|timesince }} trước
+            </span>
+          </div>
+
+          <!-- Chi tiết sự cố xe của nạn nhân -->
+          <div class="bg-amber-50/60 rounded-xl p-3 border border-amber-100 space-y-1.5">
+            <div>
+              <h4 class="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-wrench text-amber-600"></i> {{ active_request.issue_display }}
+              </h4>
+            </div>
+            <p class="text-xs text-slate-600 flex items-center gap-1.5">
+              <i class="fa-solid fa-motorcycle text-slate-400"></i>
+              <span>Loại xe: <strong>{{ active_request.vehicle_display }}</strong></span>
+            </p>
+            <p class="text-xs text-slate-600 flex items-start gap-1.5">
+              <i class="fa-solid fa-location-dot text-red-500 mt-0.5 shrink-0"></i>
+              <span>{{ active_request.location_address }}</span>
+            </p>
+          </div>
+
+          <!-- Danh sách thợ cứu hộ quanh bạn đang nhận chuông thông báo -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                <i class="fa-solid fa-tower-broadcast text-red-500 animate-pulse"></i> 
+                Thợ cứu hộ sẵn sàng gần bạn:
+              </span>
+              <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.2 rounded">
+                {{ nearby_rescuers|length }} thợ online
+              </span>
+            </div>
+
+            {% if nearby_rescuers %}
+              <div class="space-y-1.5">
+                {% for helper_p in nearby_rescuers %}
+                <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                  <div class="flex items-center gap-2">
+                    <img src="{{ helper_p.avatar_url }}" class="w-7 h-7 rounded-full object-cover border border-slate-300" alt="Thợ">
+                    <div>
+                      <div class="font-bold text-slate-800 flex items-center gap-1">
+                        {{ helper_p.user.get_full_name|default:helper_p.user.username }}
+                        <span class="text-[9px] text-amber-600 font-bold"><i class="fa-solid fa-star text-amber-500"></i> {{ helper_p.rating_avg }}</span>
+                      </div>
+                      <div class="text-[10px] text-slate-500">{{ helper_p.vehicle_type }}</div>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-[10px] font-bold text-red-600 block">Cách ~{{ helper_p.distance_km }} km</span>
+                    <span class="text-[9px] text-emerald-600 font-medium flex items-center gap-1 justify-end">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Đang nhận tin
+                    </span>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="text-[11px] text-slate-400 italic text-center py-1">Đang mở rộng quét thêm thợ...</p>
+            {% endif %}
+          </div>
+
+          <!-- Nút hành động dành cho Nạn nhân -->
+          <div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+            <!-- Mở Chat trao đổi -->
+            <a href="{% url 'support_chat' %}?request_id={{ active_request.id }}" class="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 transition">
+              <i class="fa-regular fa-comments"></i>
+              <span>Nhắn Tin Trao Đổi</span>
+            </a>
+
+            <!-- Nút Hủy yêu cầu cứu hộ -->
+            <form method="POST" action="{% url 'cancel_request' active_request.id %}" class="shrink-0" onsubmit="return confirm('Bạn có chắc chắn muốn hủy yêu cầu cứu hộ này không?');">
+              {% csrf_token %}
+              <button type="submit" class="py-2 px-3 border border-slate-300 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold flex items-center gap-1 transition">
+                <i class="fa-solid fa-xmark"></i>
+                <span>Hủy ca</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+      {% else %}
+        <!-- TH 2: CA ĐÃ CÓ THỢ TIẾP NHẬN (ACCEPTED / IN_PROGRESS / ARRIVED) -->
+        <div class="bg-white border-2 border-emerald-400 rounded-2xl p-4 shadow-sm space-y-3">
+          
+          <!-- Header mã ca & Trạng thái thợ -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="bg-emerald-600 text-white font-extrabold text-[11px] px-2 py-0.5 rounded-lg">#{{ active_request.code }}</span>
+              <span class="bg-emerald-50 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                <i class="fa-solid fa-circle-check text-emerald-600"></i> {{ active_request.get_status_display }}
+              </span>
+            </div>
+            <span class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+              Dự kiến ~{{ eta_minutes }} phút tới
+            </span>
+          </div>
+
+          <!-- Thanh Stepper 4 bước trực quan tiến trình cứu hộ -->
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <div class="flex items-center justify-between text-[10px] font-bold mb-1.5">
+              <span class="text-emerald-700"><i class="fa-solid fa-check"></i> Đã nhận</span>
+              <span class="{% if active_request.status == 'IN_PROGRESS' %}text-red-600 font-extrabold animate-pulse{% elif active_request.status in 'ARRIVED,COMPLETED' %}text-emerald-700{% else %}text-slate-400{% endif %}">
+                <i class="fa-solid fa-motorcycle"></i> Đang tới
+              </span>
+              <span class="{% if active_request.status == 'ARRIVED' %}text-red-600 font-extrabold animate-pulse{% elif active_request.status == 'COMPLETED' %}text-emerald-700{% else %}text-slate-400{% endif %}">
+                <i class="fa-solid fa-location-dot"></i> Đã tới nơi
+              </span>
+              <span class="{% if active_request.status == 'COMPLETED' %}text-emerald-700{% else %}text-slate-400{% endif %}">
+                <i class="fa-solid fa-flag-checkered"></i> Hoàn tất
+              </span>
+            </div>
+            <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+              <div class="bg-gradient-to-r from-emerald-500 to-red-600 h-1.5 rounded-full transition-all duration-500
+                {% if active_request.status == 'ACCEPTED' %}w-[25%]
+                {% elif active_request.status == 'IN_PROGRESS' %}w-[60%]
+                {% elif active_request.status == 'ARRIVED' %}w-[90%]
+                {% elif active_request.status == 'COMPLETED' %}w-[100%]{% endif %}">
+              </div>
+            </div>
+          </div>
+
+          <!-- Thông tin Thợ cứu hộ đang di chuyển đến bạn -->
+          <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200/80 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img 
+                  src="{{ helper_profile.avatar_url|default:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' }}" 
+                  alt="Thợ Cứu Hộ" 
+                  class="w-11 h-11 rounded-full object-cover border-2 border-emerald-500"
+                />
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <h4 class="font-extrabold text-xs text-slate-800">{{ active_request.helper.get_full_name|default:active_request.helper.username }}</h4>
+                    <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                      <i class="fa-solid fa-star text-amber-500"></i> {{ helper_profile.rating_avg|default:'4.9' }}
+                    </span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-0.5">
+                    {{ helper_profile.vehicle_type|default:'Honda Wave' }} • <span class="font-mono font-bold text-slate-700">{{ helper_profile.vehicle_plate|default:'43-C1 123.45' }}</span>
+                  </p>
+                </div>
+              </div>
+
+              <!-- Nút Gọi Thợ Ngay -->
+              <a 
+                href="tel:{{ helper_profile.phone|default:'0905123456' }}" 
+                class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-xs shadow-md shadow-emerald-500/30 hover:bg-emerald-600 transition" 
+                title="Gọi điện trực tiếp cho thợ"
+              >
+                <i class="fa-solid fa-phone"></i>
+              </a>
+            </div>
+
+            <!-- Khoảng cách & ETA -->
+            <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
+              <span class="text-slate-500 flex items-center gap-1">
+                <i class="fa-solid fa-route text-red-500"></i> Khoảng cách: <strong>{{ distance_km }} km</strong>
+              </span>
+              <span class="text-slate-500 flex items-center gap-1">
+                <i class="fa-regular fa-clock text-amber-500"></i> Đến sau: <strong>~{{ eta_minutes }} phút</strong>
+              </span>
+            </div>
+          </div>
+
+          <!-- Cụm nút hành động chính cho Nạn nhân -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <a 
+              href="{% url 'support_chat' %}?request_id={{ active_request.id }}" 
+              class="py-2.5 px-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs text-center flex items-center justify-center gap-1.5 transition"
+            >
+              <i class="fa-regular fa-comments text-sm"></i>
+              <span>Nhắn Tin Với Thợ</span>
+            </a>
+
+            <a 
+              href="{% url 'live_tracking' %}?request_id={{ active_request.id }}" 
+              class="py-2.5 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs text-center shadow-md shadow-red-600/30 flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
+            >
+              <i class="fa-solid fa-location-crosshairs text-sm"></i>
+              <span>Xem Bản Đồ Lộ Trình</span>
+            </a>
+          </div>
+
+        </div>
+      {% endif %}
+
+    {% else %}
+      <!-- TH 3: HIỆN TẠI NẠN NHÂN KHÔNG CÓ YÊU CẦU CỨU HỘ NÀO ĐANG DIỄN RA -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 text-center space-y-3 shadow-xs">
+        <div class="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto text-2xl">
+          <i class="fa-solid fa-shield-heart"></i>
+        </div>
+        <div>
+          <h4 class="font-extrabold text-sm text-slate-800">Bạn hiện không có yêu cầu cứu hộ nào</h4>
+          <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+            Phương tiện của bạn đang ở trạng thái an toàn. Khi gặp sự cố trên đường, hãy gửi yêu cầu SOS khẩn cấp để kết nối với các thợ cứu hộ quanh bán kính 10km ngay lập tức.
+          </p>
+        </div>
+        <div class="pt-2">
+          <a 
+            href="{% url 'rescue_create' %}" 
+            class="inline-flex items-center justify-center gap-2 w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-red-600/30 transition active:scale-[0.98]"
+          >
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Gửi Yêu Cầu Cứu Hộ Khẩn Cấp (SOS)</span>
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- 3. LỊCH SỬ CÁC CA CỨU HỘ TRƯỚC ĐÂY CỦA NẠN NHÂN -->
+  <div class="p-3">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+        <i class="fa-solid fa-clock-rotate-left text-slate-500"></i> Lịch sử ca cứu hộ của bạn
+      </h3>
+      <span class="text-[10px] text-slate-400">{{ past_requests|length }} ca trước</span>
+    </div>
+
+    {% if past_requests %}
+      <div class="space-y-2.5">
+        {% for req in past_requests %}
+        <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-xs space-y-2 hover:border-slate-300 transition">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="bg-slate-100 text-slate-700 font-extrabold text-[11px] px-2 py-0.5 rounded-lg">#{{ req.code }}</span>
+              <span class="text-xs font-bold text-slate-800">{{ req.issue_display }}</span>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full 
+              {% if req.status == 'COMPLETED' %}bg-emerald-50 text-emerald-700 border border-emerald-200
+              {% elif req.status == 'CANCELLED' %}bg-slate-100 text-slate-500
+              {% else %}bg-amber-50 text-amber-700{% endif %}">
+              {{ req.get_status_display }}
+            </span>
+          </div>
+
+          <div class="text-[11px] text-slate-500">
+            <span>{{ req.location_address|truncatechars:35 }}</span>
+          </div>
+
+          <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px] text-slate-400">
+            <span>{{ req.created_at|date:"d/m/Y H:i" }}</span>
+            <div class="flex items-center gap-2">
+              {% if req.status == 'COMPLETED' %}
+                <a href="{% url 'rating_feedback' %}?request_id={{ req.id }}" class="text-amber-600 font-bold hover:underline flex items-center gap-1">
+                  <i class="fa-solid fa-star text-amber-500"></i> Đánh giá thợ
+                </a>
+              {% endif %}
+              <a href="{% url 'live_tracking' %}?request_id={{ req.id }}" class="text-blue-600 font-semibold hover:underline">
+                Xem lại lộ trình
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="bg-white border border-dashed border-slate-200 rounded-xl p-4 text-center text-xs text-slate-400">
+        Bạn chưa có lịch sử ca cứu hộ nào trước đây.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- 4. Lịch Sử Thông Báo Dành Riêng Cho Nạn Nhân -->
+  <div class="p-3">
+    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+      <i class="fa-regular fa-bell text-slate-500"></i> Thông báo cho bạn
+    </h3>
+    <div class="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden shadow-xs">
+      {% for notif in notifications %}
+      <div class="p-3 hover:bg-slate-50 transition text-xs">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-bold text-slate-800">{{ notif.title }}</span>
+          <span class="text-[10px] text-slate-400">{{ notif.created_at|timesince }} trước</span>
+        </div>
+        <p class="text-slate-600 text-[11px] leading-relaxed">{{ notif.content }}</p>
+      </div>
+      {% empty %}
+      <div class="p-4 text-center text-xs text-slate-400">Chưa có thông báo nào</div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

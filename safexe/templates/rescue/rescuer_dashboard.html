@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}SafeXe - Tiếp Nhận & Xử Lý Yêu Cầu Cứu Hộ{% endblock %}
+{% block title %}SafeXe - Tiếp Nhận & Xử Lý Yêu Cầu Cứu Hộ (Dành Cho Thợ){% endblock %}
 
 {% block content %}
 <div class="flex-1 flex flex-col bg-slate-50 pb-6">
@@ -90,7 +90,7 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="bg-red-600 text-white font-extrabold text-[11px] px-2 py-0.5 rounded-lg">#{{ active.code }}</span>
-            <span class="text-xs font-bold text-slate-800">{{ active.issue_type }}</span>
+            <span class="text-xs font-bold text-slate-800">{{ active.issue_display }}</span>
           </div>
           <span class="bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
             {{ active.get_status_display }}
@@ -158,12 +158,10 @@
           <div class="space-y-1 mb-3">
             <h4 class="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
               <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
-              {{ req.issue_type }}
+              {{ req.issue_display }}
             </h4>
             <div class="flex items-center gap-2 text-[11px] text-slate-500">
-              <span><i class="fa-solid fa-motorcycle text-slate-400"></i> {{ req.vehicle_type }}</span>
-              <span>•</span>
-              <span class="text-red-600 font-bold">Phí đề xuất: {{ req.proposed_fee }}</span>
+              <span><i class="fa-solid fa-motorcycle text-slate-400"></i> {{ req.vehicle_display }}</span>
             </div>
             <p class="text-xs text-slate-600 flex items-start gap-1.5 mt-1">
               <i class="fa-solid fa-location-dot text-red-500 mt-0.5 shrink-0"></i>

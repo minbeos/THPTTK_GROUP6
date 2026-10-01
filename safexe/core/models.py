@@ -96,7 +96,7 @@ class RescueRequest(models.Model):
     latitude = models.FloatField(default=16.0725)
     longitude = models.FloatField(default=108.1520)
     
-    proposed_fee = models.CharField(max_length=50, default='50.000 VNĐ')
+    proposed_fee = models.CharField(max_length=50, default='', blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -111,6 +111,32 @@ class RescueRequest(models.Model):
     def can_be_accepted(self):
         """Business rule 7: Yêu cầu chỉ có thể tiếp nhận khi đang ở trạng thái PENDING"""
         return self.status == 'PENDING' and self.helper is None
+
+    @property
+    def issue_display(self):
+        mapping = {
+            'puncture': 'Thủng săm / Xẹp lốp',
+            'battery': 'Hỏng bình ắc quy / Kích bình',
+            'fuel': 'Hết xăng giữa đường',
+            'engine': 'Chết máy / Ngập nước',
+            'chain_brake': 'Đứt xích / Bó kẹt phanh',
+            'key': 'Mất chìa khóa / Kẹt Smartkey',
+            'accident': 'Va chạm giao thông',
+            'other_issue': 'Sự cố khác',
+        }
+        return mapping.get(self.issue_type, self.issue_type)
+
+    @property
+    def vehicle_display(self):
+        mapping = {
+            'motorcycle': 'Xe máy',
+            'car': 'Xe ô tô (4 - 7 chỗ)',
+            'electric_bike': 'Xe máy điện / Xe đạp điện',
+            'bicycle': 'Xe đạp',
+            'other_vehicle': 'Phương tiện khác',
+        }
+        return mapping.get(self.vehicle_type, self.vehicle_type)
+
 
 
 class RescueResponseLog(models.Model):
@@ -140,9 +166,11 @@ class RescueResponseLog(models.Model):
 class ChatMessage(models.Model):
     """
     Main flow 7: Người hỗ trợ và người gặp sự cố trao đổi qua tin nhắn và thống nhất phương án.
+    Tin nhắn là riêng tư 1-1 giữa 1 tài khoản thợ và 1 tài khoản nạn nhân.
     """
     request = models.ForeignKey(RescueRequest, on_delete=models.CASCADE, related_name='chat_messages')
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_chat_messages')
+    receiver = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='received_chat_messages')
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -150,7 +178,7 @@ class ChatMessage(models.Model):
         ordering = ['created_at']
 
     def __str__(self):
-        return f"{self.sender.username}: {self.message[:30]}"
+        return f"{self.sender.username} -> {self.receiver.username if self.receiver else 'Direct'}: {self.message[:30]}"
 
 
 class Notification(models.Model):

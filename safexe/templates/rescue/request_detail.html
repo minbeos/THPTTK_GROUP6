@@ -32,11 +32,11 @@
           <span class="text-[10px] uppercase font-bold text-red-600 tracking-wider">Thông tin sự cố</span>
           <h3 class="text-base font-extrabold text-slate-900 mt-0.5 flex items-center gap-1.5">
             <i class="fa-solid fa-wrench text-amber-500"></i>
-            {{ rescue_req.issue_type }}
+            {{ rescue_req.issue_display }}
           </h3>
         </div>
         <span class="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-xl">
-          <i class="fa-solid fa-motorcycle text-slate-500"></i> {{ rescue_req.vehicle_type }}
+          <i class="fa-solid fa-motorcycle text-slate-500"></i> {{ rescue_req.vehicle_display }}
         </span>
       </div>
 
@@ -68,11 +68,6 @@
       </div>
       {% endif %}
 
-      <!-- Thỏa thuận chi phí đề xuất -->
-      <div class="flex items-center justify-between pt-1">
-        <span class="text-xs text-slate-500">Chi phí hỗ trợ đề xuất:</span>
-        <span class="text-base font-extrabold text-red-600">{{ rescue_req.proposed_fee }}</span>
-      </div>
     </div>
 
     <!-- 2. Hồ Sơ Người Gặp Sự Cố (Alternative flow 6a) -->

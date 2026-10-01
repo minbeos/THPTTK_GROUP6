@@ -110,7 +110,7 @@
               {{ rescue_req.get_status_display|default:"Đang di chuyển tới" }}
             </span>
           </div>
-          <p class="text-[11px] text-slate-500">Ca #{{ rescue_id }} • {{ rescue_req.issue_type|default:"Sự cố giao thông" }}</p>
+          <p class="text-[11px] text-slate-500">Ca #{{ rescue_id }} • {{ rescue_req.issue_display|default:"Sự cố giao thông" }}</p>
         </div>
       </div>
 
@@ -120,26 +120,31 @@
       </button>
     </div>
 
-    <!-- Thông tin Người hỗ trợ & Phương tiện -->
+    <!-- Thông tin Đối tác (Tùy theo người xem là Nạn nhân hay Thợ) -->
+    {% if is_victim %}
+    <!-- Người xem là NẠN NHÂN: Hiển thị thông tin Thợ đang đến cứu -->
     <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <img 
           src="{{ helper_profile.avatar_url|default:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' }}" 
           alt="Avatar Thợ" 
-          class="w-10 h-10 rounded-full object-cover border border-red-500"
+          class="w-10 h-10 rounded-full object-cover border-2 border-emerald-500"
         />
         <div>
-          <h3 class="font-bold text-slate-800 text-xs">{{ helper_name }}</h3>
-          <p class="text-[10px] text-slate-500">{{ helper_vehicle }}</p>
+          <div class="flex items-center gap-1">
+            <h3 class="font-bold text-slate-800 text-xs">{{ helper_name }}</h3>
+            <span class="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Thợ cứu hộ</span>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-0.5">{{ helper_vehicle }}</p>
         </div>
       </div>
 
-      <!-- Kênh Liên lạc: Cặp nút Gọi & Nhắn tin nhanh (Main flow 7 & 12) -->
+      <!-- Kênh Liên lạc: Cặp nút Gọi & Nhắn tin nhanh -->
       <div class="flex items-center gap-1.5">
         <a 
           href="tel:{{ helper_phone }}" 
           class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-xs transition"
-          title="Gọi điện thoại trực tiếp"
+          title="Gọi điện thoại trực tiếp cho thợ"
         >
           <i class="fa-solid fa-phone"></i>
         </a>
@@ -153,7 +158,64 @@
       </div>
     </div>
 
-    <!-- Cụm nút chuyển trạng thái lộ trình (Dành cho Người cứu hộ & Người gặp nạn) -->
+    <!-- Thông báo tiến độ cho Nạn nhân -->
+    <div class="pt-1">
+      <div class="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+          <span class="text-slate-600 font-medium text-[11px]">
+            {% if status == 'ACCEPTED' %}Thợ đã tiếp nhận ca và đang chuẩn bị xuất phát...
+            {% elif status == 'IN_PROGRESS' %}Thợ đang trên đường di chuyển tới chỗ bạn...
+            {% elif status == 'ARRIVED' %}Thợ đã đến vị trí! Vui lòng kiểm tra xe cùng thợ.
+            {% elif status == 'COMPLETED' %}Ca cứu hộ đã hoàn tất an toàn!{% endif %}
+          </span>
+        </div>
+        {% if status == 'COMPLETED' %}
+        <a href="{% url 'rating_feedback' %}?request_id={{ rescue_req.id }}" class="px-2.5 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-bold">
+          Đánh giá thợ
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% else %}
+    <!-- Người xem là THỢ CỨU HỘ: Hiển thị thông tin Nạn nhân cần cứu -->
+    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <img 
+          src="{{ victim_avatar|default:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80' }}" 
+          alt="Avatar Nạn nhân" 
+          class="w-10 h-10 rounded-full object-cover border-2 border-red-500"
+        />
+        <div>
+          <div class="flex items-center gap-1">
+            <h3 class="font-bold text-slate-800 text-xs">{{ victim_name }}</h3>
+            <span class="text-[9px] bg-red-100 text-red-800 font-bold px-1.5 py-0.2 rounded">Nạn nhân</span>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-0.5 truncate max-w-[170px]">{{ location_address }}</p>
+        </div>
+      </div>
+
+      <!-- Kênh Liên lạc: Cặp nút Gọi & Nhắn tin nhanh -->
+      <div class="flex items-center gap-1.5">
+        <a 
+          href="tel:{{ victim_phone }}" 
+          class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-xs transition"
+          title="Gọi điện thoại trực tiếp cho nạn nhân"
+        >
+          <i class="fa-solid fa-phone"></i>
+        </a>
+        <a 
+          href="{% url 'support_chat' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% endif %}" 
+          class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center text-xs transition"
+          title="Nhắn tin trao đổi"
+        >
+          <i class="fa-regular fa-comment-dots text-sm"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Cụm nút chuyển trạng thái lộ trình dành cho Thợ cứu hộ -->
     {% if rescue_req %}
     <div class="pt-1 space-y-2">
       <div class="flex items-center gap-2">
@@ -188,6 +250,7 @@
         </form>
       </div>
     </div>
+    {% endif %}
     {% endif %}
 
   </div>

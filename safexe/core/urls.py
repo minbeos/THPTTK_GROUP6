@@ -12,11 +12,13 @@ urlpatterns = [
     path("", views.create_request_view, name="rescue_create"),
     path("rescue/create/", views.create_request_view, name="rescue_create_alt"),
 
-    # 3. Tiếp nhận yêu cầu cứu hộ (Người cứu hộ / Thợ)
+    # 3. Tiếp nhận & Theo dõi tiến trình ca cứu hộ (Phân biệt vai trò Thợ và Nạn nhân)
     path("rescuer/", views.rescuer_dashboard_view, name="rescuer_dashboard"),
+    path("victim/", views.rescuer_dashboard_view, {'view_as': 'victim'}, name="victim_dashboard"),
     path("rescue/detail/<int:request_id>/", views.request_detail_view, name="request_detail"),
     path("rescue/accept/<int:request_id>/", views.accept_request_view, name="accept_request"),
     path("rescue/reject/<int:request_id>/", views.reject_request_view, name="reject_request"),
+    path("rescue/cancel/<int:request_id>/", views.cancel_request_view, name="cancel_request"),
     path("rescuer/toggle-status/", views.toggle_rescuer_status_view, name="toggle_rescuer_status"),
 
     # 4. Trao đổi & Thống nhất phương án (Chat)

@@ -95,10 +95,17 @@
 
       <!-- Quick action badge & User Profile link -->
       <div class="flex items-center gap-2">
+        {% if request.user.profile.role == 'VICTIM' or request.user.username == 'nan_nhan' or not request.user.is_authenticated %}
+        <a href="{% url 'rescuer_dashboard' %}" class="bg-white/15 hover:bg-white/25 px-2.5 py-1 rounded-full text-[11px] font-bold text-white flex items-center gap-1 transition" title="Xem tiến trình và trạng thái ca cứu hộ">
+          <i class="fa-solid fa-clock-rotate-left text-amber-300"></i>
+          <span>Tiến trình ca</span>
+        </a>
+        {% else %}
         <a href="{% url 'rescuer_dashboard' %}" class="bg-white/15 hover:bg-white/25 px-2.5 py-1 rounded-full text-[11px] font-bold text-white flex items-center gap-1 transition" title="Bảng tiếp nhận ca cứu hộ">
           <i class="fa-solid fa-radar text-amber-300 animate-pulse"></i>
           <span>Nhận ca</span>
         </a>
+        {% endif %}
         <a href="{% url 'login' %}" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs text-white transition" title="Tài khoản: {{ request.user.get_full_name|default:request.user.username }}">
           <i class="fa-regular fa-user"></i>
         </a>
@@ -140,10 +147,17 @@
         <i class="fa-solid fa-triangle-exclamation text-base"></i>
         <span>Gửi SOS</span>
       </a>
-      <a href="{% url 'rescuer_dashboard' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescuer' in request.path %}text-red-600 font-bold{% endif %}">
+      {% if request.user.profile.role == 'VICTIM' or request.user.username == 'nan_nhan' or not request.user.is_authenticated %}
+      <a href="{% url 'rescuer_dashboard' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescuer' in request.path or '/victim' in request.path %}text-red-600 font-bold{% endif %}">
+        <i class="fa-solid fa-clock-rotate-left text-base"></i>
+        <span>Tiến trình ca</span>
+      </a>
+      {% else %}
+      <a href="{% url 'rescuer_dashboard' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescuer' in request.path or '/victim' in request.path %}text-red-600 font-bold{% endif %}">
         <i class="fa-solid fa-tower-broadcast text-base"></i>
         <span>Nhận ca</span>
       </a>
+      {% endif %}
       <a href="{% url 'support_chat' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescue/support-chat' in request.path %}text-red-600 font-bold{% endif %}">
         <i class="fa-regular fa-comments text-base"></i>
         <span>Trao đổi</span>
@@ -152,10 +166,12 @@
         <i class="fa-solid fa-location-crosshairs text-base"></i>
         <span>Định vị</span>
       </a>
+      {% if request.user.profile.role == 'VICTIM' or request.user.username == 'nan_nhan' or not request.user.is_authenticated %}
       <a href="{% url 'rating_feedback' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescue/rating' in request.path %}text-red-600 font-bold{% endif %}">
         <i class="fa-regular fa-star text-base"></i>
         <span>Đánh giá</span>
       </a>
+      {% endif %}
     </nav>
     {% endblock %}
 

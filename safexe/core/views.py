@@ -143,10 +143,33 @@ def create_request_view(request):
         location_address = request.POST.get("location_address", "120 Hoàng Minh Thảo, Liên Chiểu, Đà Nẵng")
         latitude = request.POST.get("latitude")
         longitude = request.POST.get("longitude")
-        vehicle_type = request.POST.get("vehicle_type", "Xe máy số")
-        issue_type = request.POST.get("issue_type", "Thủng săm / xẹp lốp")
+        vehicle_type = request.POST.get("vehicle_type", "Xe máy")
+        issue_type = request.POST.get("issue_type", "Thủng săm / Xẹp lốp")
+        other_vehicle_text = request.POST.get("other_vehicle_text", "").strip()
+        other_issue_text = request.POST.get("other_issue_text", "").strip()
+
+        issue_mapping = {
+            'puncture': 'Thủng săm / Xẹp lốp',
+            'battery': 'Hỏng bình ắc quy / Kích bình',
+            'fuel': 'Hết xăng giữa đường',
+            'engine': 'Chết máy / Ngập nước',
+            'chain_brake': 'Đứt xích / Bó kẹt phanh',
+            'key': 'Mất chìa khóa / Kẹt Smartkey',
+            'accident': 'Va chạm giao thông',
+            'other_issue': other_issue_text or 'Sự cố khác',
+        }
+        vehicle_mapping = {
+            'motorcycle': 'Xe máy',
+            'car': 'Xe ô tô (4 - 7 chỗ)',
+            'electric_bike': 'Xe máy điện / Xe đạp điện',
+            'bicycle': 'Xe đạp',
+            'other_vehicle': other_vehicle_text or 'Phương tiện khác',
+        }
+        issue_type = issue_mapping.get(issue_type, issue_type)
+        vehicle_type = vehicle_mapping.get(vehicle_type, vehicle_type)
+
         description = request.POST.get("description", "")
-        proposed_fee = request.POST.get("proposed_fee", "50.000 VNĐ")
+        proposed_fee = request.POST.get("proposed_fee", "")
 
         try:
             latitude = float(latitude) if latitude else 16.0725
@@ -238,11 +261,21 @@ def create_request_view(request):
 # ==========================================
 # 3. TRANG DASHBOARD TIẾP NHẬN DÀNH CHO NGƯỜI CỨU HỘ
 # ==========================================
-def rescuer_dashboard_view(request):
+# 3. TRANG DASHBOARD TIẾP NHẬN & THEO DÕI CA CỨU HỘ
+#    (PHÂN BIỆT GIAO DIỆN DÀNH CHO THỢ VÀ NẠN NHÂN)
+# ==========================================
+def rescuer_dashboard_view(request, view_as=None):
     """
-    Main flow 4 & 5:
-    Người hỗ trợ nhận và mở danh sách thông báo.
-    Hệ thống hiển thị danh sách thông tin yêu cầu gồm vị trí, loại xe, sự cố, khoảng cách <= 10km.
+    Main flow 4 & 5 & Victim Rescue Tracking Flow:
+    - Nếu là Người cứu hộ / Thợ (RESCUER):
+      Hiển thị bảng nhận ca, radar quét các yêu cầu trong bán kính 10km,
+      công tắc Sẵn sàng nhận ca, các ca thợ đang xử lý.
+    - Nếu là Người gặp nạn (VICTIM):
+      Hiển thị tiến trình ca cứu hộ của nạn nhân (ca đang phát chờ thợ nhận,
+      danh sách thợ lân cận đang nhận chuông, thông tin thợ đã nhận ca và đang tới,
+      lịch sử các ca đã gửi, nút hủy ca).
+    Hỗ trợ tham số ?view_as=victim hoặc ?view_as=rescuer để người dùng / giám khảo
+    dễ dàng đối chiếu giao diện 2 bên mà không cần đổi tài khoản.
     """
     current_user = get_current_user(request)
     profile = getattr(current_user, 'profile', None)
@@ -250,6 +283,105 @@ def rescuer_dashboard_view(request):
     if not profile:
         profile = UserProfile.objects.create(user=current_user, role='RESCUER', rescuer_status='READY')
 
+    # Xác định góc nhìn: ưu tiên tham số URL / query param, sau đó đến role thực tế của user
+    req_view = request.GET.get('view_as') or view_as
+    if not req_view:
+        if profile.role == 'VICTIM' or current_user.username == 'nan_nhan':
+            req_view = 'victim'
+        else:
+            req_view = 'rescuer'
+
+    # ----------------------------------------------------
+    # GÓC NHÌN 1: DÀNH CHO NGƯỜI GẶP NẠN (VICTIM DASHBOARD)
+    # ----------------------------------------------------
+    if req_view == 'victim':
+        # 1. Tìm ca cứu hộ đang hoạt động của nạn nhân (PENDING, ACCEPTED, IN_PROGRESS, ARRIVED)
+        active_request = RescueRequest.objects.filter(
+            victim=current_user,
+            status__in=['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'ARRIVED']
+        ).order_by('-created_at').first()
+
+        # Nếu không có ca của current_user, tìm ca được lưu gần nhất trong session
+        if not active_request and request.session.get('current_rescue_id'):
+            active_request = RescueRequest.objects.filter(
+                id=request.session['current_rescue_id'],
+                status__in=['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'ARRIVED']
+            ).first()
+
+        # Nếu vẫn chưa có và đây là nạn nhân demo, lấy ca gần nhất trong hệ thống để demo trực quan
+        if not active_request and current_user.username == 'nan_nhan':
+            active_request = RescueRequest.objects.filter(
+                status__in=['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'ARRIVED']
+            ).order_by('-created_at').first()
+
+        nearby_rescuers = []
+        helper_profile = None
+        distance_km = 1.2
+        eta_minutes = 3
+
+        if active_request:
+            if active_request.status == 'PENDING':
+                # Tìm các thợ sẵn sàng trong bán kính 10km đang nhận tín hiệu SOS này
+                rescuers_qs = UserProfile.objects.select_related('user').filter(
+                    user__is_active=True,
+                    role__in=['RESCUER', 'BOTH'],
+                    rescuer_status='READY'
+                ).exclude(user=current_user)
+
+                for r_prof in rescuers_qs:
+                    d = calculate_distance_km(
+                        active_request.latitude, active_request.longitude,
+                        r_prof.current_latitude, r_prof.current_longitude
+                    )
+                    if d <= 10.0:
+                        r_prof.distance_km = d
+                        r_prof.eta_minutes = max(3, round(d / 25 * 60))
+                        nearby_rescuers.append(r_prof)
+                nearby_rescuers.sort(key=lambda x: x.distance_km)
+
+            elif active_request.helper:
+                helper_profile = getattr(active_request.helper, 'profile', None)
+                if helper_profile:
+                    distance_km = calculate_distance_km(
+                        helper_profile.current_latitude, helper_profile.current_longitude,
+                        active_request.latitude, active_request.longitude
+                    )
+                    eta_minutes = max(2, round(distance_km / 25 * 60))
+                active_request.distance_km = distance_km
+                active_request.eta_minutes = eta_minutes
+
+        # 2. Lịch sử các ca cứu hộ trước đây của nạn nhân
+        past_requests = RescueRequest.objects.filter(victim=current_user).order_by('-created_at')
+        if active_request:
+            past_requests = past_requests.exclude(id=active_request.id)
+        past_requests = past_requests[:10]
+
+        # 3. Thống kê ca của nạn nhân
+        total_requests = RescueRequest.objects.filter(victim=current_user).count()
+        completed_requests = RescueRequest.objects.filter(victim=current_user, status='COMPLETED').count()
+
+        # 4. Lịch sử thông báo gửi tới nạn nhân
+        notifications = Notification.objects.filter(user=current_user).order_by('-created_at')[:10]
+
+        context = {
+            "current_user": current_user,
+            "profile": profile,
+            "view_as": "victim",
+            "active_request": active_request,
+            "nearby_rescuers": nearby_rescuers,
+            "helper_profile": helper_profile,
+            "distance_km": distance_km,
+            "eta_minutes": eta_minutes,
+            "past_requests": past_requests,
+            "total_requests": total_requests,
+            "completed_requests": completed_requests,
+            "notifications": notifications,
+        }
+        return render(request, "rescue/victim_dashboard.html", context)
+
+    # ----------------------------------------------------
+    # GÓC NHÌN 2: DÀNH CHO THỢ CỨU HỘ (RESCUER DASHBOARD)
+    # ----------------------------------------------------
     # Lấy tất cả yêu cầu đang PENDING
     pending_requests = RescueRequest.objects.filter(status='PENDING').select_related('victim')
     
@@ -278,7 +410,9 @@ def rescuer_dashboard_view(request):
     notifications = Notification.objects.filter(user=current_user).order_by('-created_at')[:10]
 
     context = {
+        "current_user": current_user,
         "profile": profile,
+        "view_as": "rescuer",
         "nearby_requests": nearby_requests,
         "active_rescues": active_rescues,
         "notifications": notifications,
@@ -463,60 +597,203 @@ def reject_request_view(request, request_id):
 
 
 # ==========================================
+# 6B. HỦY YÊU CẦU CỨU HỘ (DÀNH CHO NẠN NHÂN)
+# ==========================================
+@require_POST
+def cancel_request_view(request, request_id):
+    """
+    Người gặp nạn chủ động hủy yêu cầu cứu hộ nếu xe đã tự khắc phục
+    hoặc không còn nhu cầu cứu hộ.
+    """
+    current_user = get_current_user(request)
+    req = get_object_or_404(RescueRequest, id=request_id)
+    profile = getattr(current_user, 'profile', None)
+
+    if req.victim == current_user or (profile and profile.role == 'VICTIM') or current_user.is_staff or current_user.username == 'nan_nhan':
+        req.status = 'CANCELLED'
+        req.save()
+        RescueResponseLog.objects.create(
+            request=req,
+            rescuer=current_user,
+            action='CANCELLED',
+            note=f"Người gặp nạn đã chủ động hủy ca #{req.code}"
+        )
+        messages.info(request, f"Đã hủy yêu cầu cứu hộ #{req.code} thành công.")
+    else:
+        messages.error(request, "Bạn không có quyền hủy yêu cầu này.")
+    return redirect("rescuer_dashboard")
+
+
+# ==========================================
 # 7. TRAO ĐỔI & THỐNG NHẤT PHƯƠNG ÁN (MAIN FLOW 7)
+#    (TRAO ĐỔI TIN NHẮN RIÊNG TƯ 1 - 1 GIỮA 1 THỢ VÀ 1 NẠN NHÂN)
 # ==========================================
 def support_chat_view(request):
     """
-    Giao diện nhắn tin trao đổi giữa thợ và người cần cứu hộ,
-    thống nhất phương án và chi phí trước/sau khi tiếp nhận.
+    Main flow 7: Giao diện trao đổi tin nhắn riêng tư giữa thợ và người cần cứu hộ.
+    BẢO MẬT & RIÊNG TƯ:
+    - Cuộc trò chuyện là 1-1 RIÊNG TƯ giữa 1 tài khoản Thợ và 1 tài khoản Nạn nhân.
+    - Không phải tin nhắn công khai. Tài khoản thợ khác không có quyền truy cập ca này.
+    - Khi ca PENDING, từng thợ trao đổi với nạn nhân trong luồng riêng biệt.
     """
+    from django.db.models import Q
+
     current_user = get_current_user(request)
+    profile = getattr(current_user, 'profile', None)
     req_id = request.GET.get("request_id") or request.session.get("current_rescue_id")
 
     rescue_req = None
     if req_id:
         rescue_req = RescueRequest.objects.filter(id=req_id).first()
-    
+
     if not rescue_req:
-        # Lấy yêu cầu đang hoạt động gần nhất của user
+        # Tìm ca cứu hộ mà current_user trực tiếp tham gia (là nạn nhân hoặc là thợ đã nhận)
         rescue_req = RescueRequest.objects.filter(
             victim=current_user
         ).order_by('-created_at').first() or RescueRequest.objects.filter(
             helper=current_user
-        ).order_by('-created_at').first() or RescueRequest.objects.order_by('-created_at').first()
+        ).order_by('-created_at').first()
 
+    # Nếu người dùng hiện tại không có bất kỳ ca cứu hộ nào
+    if not rescue_req:
+        messages.info(request, "Bạn hiện chưa có cuộc trao đổi cứu hộ nào.")
+        if profile and profile.role == 'RESCUER':
+            return redirect("rescuer_dashboard")
+        return redirect("rescue_create")
+
+    # Xác định người gặp sự cố (victim)
+    victim_user = rescue_req.victim
+    is_victim = (current_user == victim_user)
+
+    # ====================================================
+    # KIỂM TRA QUYỀN TRUY CẬP VÀ XÁC ĐỊNH ĐỐI TÁC 1 - 1
+    # ====================================================
+    rescuer_user = None
+
+    if rescue_req.helper:
+        # Trường hợp 1: Ca đã được thợ tiếp nhận -> Chỉ duy nhất thợ này và nạn nhân được chat
+        rescuer_user = rescue_req.helper
+
+        # CHẶN TRUY CẬP TRÁI PHÉP: Nếu một thợ khác cố vào ca của thợ này
+        if current_user != victim_user and current_user != rescuer_user and not current_user.is_staff:
+            messages.error(
+                request,
+                f"Cuộc trò chuyện của ca #{rescue_req.code} là riêng tư 1-1 giữa nạn nhân ({victim_user.get_full_name() or victim_user.username}) và thợ cứu hộ ({rescuer_user.get_full_name() or rescuer_user.username}). Bạn không có quyền truy cập."
+            )
+            return redirect("rescuer_dashboard")
+
+    else:
+        # Trường hợp 2: Ca đang PENDING (đang kết nối)
+        if not is_victim:
+            # Người dùng là Thợ -> Cuộc trò chuyện riêng giữa thợ này và Nạn nhân
+            rescuer_user = current_user
+        else:
+            # Người dùng là Nạn nhân -> Chọn thợ mà nạn nhân muốn chat riêng
+            target_rescuer_id = request.GET.get("rescuer_id")
+            if target_rescuer_id:
+                rescuer_user = User.objects.filter(id=target_rescuer_id).first()
+            else:
+                # Ưu tiên thợ gần nhất từng gửi tin nhắn riêng cho nạn nhân
+                last_rescuer_msg = ChatMessage.objects.filter(
+                    request=rescue_req
+                ).exclude(sender=victim_user).order_by('-created_at').first()
+
+                if last_rescuer_msg:
+                    rescuer_user = last_rescuer_msg.sender
+                else:
+                    # Mặc định lấy thợ có sẵn trong khu vực (ví dụ tho_hung)
+                    first_r = UserProfile.objects.filter(
+                        role__in=['RESCUER', 'BOTH'],
+                        user__is_active=True,
+                        rescuer_status='READY'
+                    ).exclude(user=victim_user).first()
+                    rescuer_user = first_r.user if first_r else None
+
+    # Lấy danh sách các thợ có luồng chat riêng với nạn nhân trong ca này (để nạn nhân chuyển qua lại)
+    rescuer_threads = []
+    if is_victim and not rescue_req.helper:
+        rescuers_with_chat = User.objects.filter(
+            sent_chat_messages__request=rescue_req
+        ).exclude(id=victim_user.id).distinct()
+
+        for r_u in rescuers_with_chat:
+            r_p = getattr(r_u, 'profile', None)
+            rescuer_threads.append({
+                'user': r_u,
+                'name': r_u.get_full_name() or r_u.username,
+                'avatar': r_p.avatar_url if r_p else '',
+                'is_active': (rescuer_user and rescuer_user.id == r_u.id),
+            })
+
+    # ====================================================
+    # XỬ LÝ GỬI TIN NHẮN (GỬI ĐÍCH DANH 1 - 1)
+    # ====================================================
     if request.method == "POST":
         action = request.POST.get("action")
-        
-        # Xử lý gửi tin nhắn mới
+
         message_text = request.POST.get("message_text", "").strip()
         if message_text and rescue_req:
+            # Xác định người nhận chính xác (receiver)
+            target_receiver = rescuer_user if is_victim else victim_user
+
             ChatMessage.objects.create(
                 request=rescue_req,
                 sender=current_user,
+                receiver=target_receiver,
                 message=message_text
             )
-            return redirect(f"/rescue/support-chat/?request_id={rescue_req.id}")
 
-        # Xử lý các action chấp nhận / từ chối từ form cũ nếu có
-        if action == "accept" and rescue_req:
+            # URL chuyển tiếp giữ nguyên luồng chat riêng
+            redirect_url = f"/rescue/support-chat/?request_id={rescue_req.id}"
+            if is_victim and rescuer_user and not rescue_req.helper:
+                redirect_url += f"&rescuer_id={rescuer_user.id}"
+            return redirect(redirect_url)
+
+        if action == "accept" and rescue_req and not is_victim:
             return accept_request_view(request, rescue_req.id)
-        elif action == "reject" and rescue_req:
+        elif action == "reject" and rescue_req and not is_victim:
             return reject_request_view(request, rescue_req.id)
 
-    # Lấy danh sách tin nhắn thực tế từ database
-    chat_messages = []
-    helper_profile = None
-    if rescue_req:
-        chat_messages = rescue_req.chat_messages.select_related('sender').all()
-        if rescue_req.helper:
-            helper_profile = getattr(rescue_req.helper, 'profile', None)
+    # ====================================================
+    # LỌC TIN NHẮN RIÊNG TƯ GIỮA 1 THỢ VÀ 1 NẠN NHÂN
+    # ====================================================
+    if rescuer_user:
+        # Chỉ lấy tin nhắn trao đổi giữa đúng 2 người này trong ca này
+        chat_messages = rescue_req.chat_messages.filter(
+            (Q(sender=victim_user) & (Q(receiver=rescuer_user) | Q(receiver__isnull=True))) |
+            (Q(sender=rescuer_user) & (Q(receiver=victim_user) | Q(receiver__isnull=True)))
+        ).select_related('sender', 'receiver').order_by('created_at')
+    else:
+        chat_messages = rescue_req.chat_messages.filter(
+            sender=victim_user
+        ).select_related('sender', 'receiver').order_by('created_at')
+
+    # Thông tin đối phương hiển thị trên thanh tiêu đề
+    if is_victim:
+        counterpart_user = rescuer_user
+        counterpart_profile = getattr(counterpart_user, 'profile', None) if counterpart_user else None
+        counterpart_name = counterpart_user.get_full_name() if counterpart_user else "Thợ cứu hộ khu vực"
+        counterpart_phone = counterpart_profile.phone if counterpart_profile else "0905123456"
+        counterpart_role = "Thợ cứu hộ"
+        counterpart_sub = f"{counterpart_profile.vehicle_type} - {counterpart_profile.vehicle_plate}" if counterpart_profile else "Thợ sửa xe lưu động 24/7"
+        counterpart_avatar = counterpart_profile.avatar_url if counterpart_profile else "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80"
+        counterpart_rating = counterpart_profile.rating_avg if counterpart_profile else 4.9
+    else:
+        counterpart_user = victim_user
+        counterpart_profile = getattr(counterpart_user, 'profile', None) if counterpart_user else None
+        counterpart_name = counterpart_user.get_full_name() if counterpart_user else "Người gặp sự cố"
+        counterpart_phone = counterpart_profile.phone if counterpart_profile else "0912345678"
+        counterpart_role = "Người gặp sự cố"
+        counterpart_sub = f"Vị trí: {rescue_req.location_address}" if rescue_req else "Vị trí gặp sự cố"
+        counterpart_avatar = counterpart_profile.avatar_url if counterpart_profile else "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80"
+        counterpart_rating = None
 
     # Tính khoảng cách
     distance_km = 1.2
-    if rescue_req and helper_profile:
+    helper_prof = getattr(rescuer_user, 'profile', None) if rescuer_user else None
+    if rescue_req and helper_prof:
         distance_km = calculate_distance_km(
-            helper_profile.current_latitude, helper_profile.current_longitude,
+            helper_prof.current_latitude, helper_prof.current_longitude,
             rescue_req.latitude, rescue_req.longitude
         )
 
@@ -526,11 +803,17 @@ def support_chat_view(request):
         "rescue_id": rescue_req.code if rescue_req else "SX-8921",
         "rescue_status": rescue_req.get_status_display() if rescue_req else "Chờ kết nối",
         "location_address": rescue_req.location_address if rescue_req else "120 Hoàng Minh Thảo, Đà Nẵng",
-        "helper_name": rescue_req.helper.get_full_name() if (rescue_req and rescue_req.helper) else "Đang tìm thợ...",
-        "helper_phone": helper_profile.phone if helper_profile else "0905123456",
-        "helper_profile": helper_profile,
+        "is_victim": is_victim,
+        "rescuer_user": rescuer_user,
+        "rescuer_threads": rescuer_threads,
+        "counterpart_name": counterpart_name,
+        "counterpart_phone": counterpart_phone,
+        "counterpart_role": counterpart_role,
+        "counterpart_sub": counterpart_sub,
+        "counterpart_avatar": counterpart_avatar,
+        "counterpart_rating": counterpart_rating,
         "distance_km": distance_km,
-        "proposed_fee": rescue_req.proposed_fee if rescue_req else "50.000 VNĐ",
+        "proposed_fee": rescue_req.proposed_fee if rescue_req else "",
         "chat_messages": chat_messages,
     }
     return render(request, "support/chat_and_accept.html", context)
@@ -570,6 +853,10 @@ def live_tracking_view(request):
 
     eta = max(2, round(dist / 25 * 60))
 
+    profile = getattr(current_user, 'profile', None)
+    is_victim = (rescue_req and rescue_req.victim == current_user) or (profile and profile.role == 'VICTIM') or current_user.username == 'nan_nhan'
+    victim_profile = getattr(rescue_req.victim, 'profile', None) if (rescue_req and rescue_req.victim) else None
+
     context = {
         "current_user": current_user,
         "rescue_req": rescue_req,
@@ -577,9 +864,15 @@ def live_tracking_view(request):
         "status": rescue_req.status if rescue_req else "ACCEPTED",
         "eta_minutes": eta,
         "distance_km": dist,
+        "is_victim": is_victim,
         "helper_name": rescue_req.helper.get_full_name() if (rescue_req and rescue_req.helper) else "Nguyễn Văn Hùng",
         "helper_phone": helper_profile.phone if helper_profile else "0905123456",
         "helper_vehicle": f"{helper_profile.vehicle_type} - {helper_profile.vehicle_plate}" if helper_profile else "Wave Alpha đỏ - 43C1 123.45",
+        "victim_name": rescue_req.victim.get_full_name() if (rescue_req and rescue_req.victim) else "Lê Thị Mai",
+        "victim_phone": victim_profile.phone if victim_profile else "0912345678",
+        "victim_avatar": victim_profile.avatar_url if victim_profile else "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80",
+        "victim_vehicle": rescue_req.vehicle_type if rescue_req else "Xe máy",
+        "location_address": rescue_req.location_address if rescue_req else "120 Hoàng Minh Thảo, Đà Nẵng",
         "victim_lat": rescue_req.latitude if rescue_req else 16.0725,
         "victim_lng": rescue_req.longitude if rescue_req else 108.1520,
         "helper_lat": helper_profile.current_latitude if helper_profile else 16.0780,
@@ -614,7 +907,14 @@ def update_request_status_view(request, request_id):
                 req.helper.profile.save()
 
             messages.success(request, f"Ca cứu hộ #{req.code} đã hoàn thành xuất sắc!")
-            return redirect(f"/rescue/rating/?request_id={req.id}")
+            
+            # Đánh giá là nạn nhân đánh giá chứ thợ không đánh giá
+            profile = getattr(current_user, 'profile', None)
+            is_rescuer = (profile and profile.role == 'RESCUER') or (req.helper and current_user == req.helper and current_user != req.victim)
+            if is_rescuer:
+                return redirect("rescuer_dashboard")
+            else:
+                return redirect(f"/rescue/rating/?request_id={req.id}")
 
         messages.info(request, f"Đã cập nhật trạng thái ca #{req.code}: {req.get_status_display()}")
 
@@ -641,24 +941,60 @@ def toggle_rescuer_status_view(request):
 
 
 # ==========================================
-# 11. ĐÁNH GIÁ SAO & GỬI NHẬN XÉT DỊCH VỤ
+# 11. ĐÁNH GIÁ SAO & GỬI NHẬN XÉT DỊCH VỤ (CHỈ DÀNH CHO NẠN NHÂN)
 # ==========================================
 def rating_feedback_view(request):
+    """
+    Đánh giá sao & nhận xét dịch vụ.
+    Chỉ dành cho nạn nhân đánh giá người cứu hộ (thợ không đánh giá).
+    """
     current_user = get_current_user(request)
+    profile = getattr(current_user, 'profile', None)
+
+    # Thợ không đánh giá -> Chuyển về dashboard tiếp nhận ca
+    if profile and profile.role == 'RESCUER' and current_user.username != 'nan_nhan':
+        messages.warning(request, "Tính năng đánh giá chỉ dành cho nạn nhân đánh giá người cứu hộ.")
+        return redirect("rescuer_dashboard")
+
     req_id = request.GET.get("request_id")
     rescue_req = None
     if req_id:
         rescue_req = RescueRequest.objects.filter(id=req_id).first()
+    else:
+        # Lấy ca cứu hộ gần nhất của nạn nhân
+        rescue_req = RescueRequest.objects.filter(victim=current_user, status='COMPLETED').order_by('-updated_at').first()
+        if not rescue_req:
+            rescue_req = RescueRequest.objects.filter(victim=current_user).order_by('-created_at').first()
 
     if request.method == "POST":
-        score = request.POST.get("rating_score", "5")
+        score_val = request.POST.get("rating_score", "5")
+        try:
+            score = float(score_val)
+        except (ValueError, TypeError):
+            score = 5.0
+
         comment = request.POST.get("comment", "")
-        messages.success(request, f"Cảm ơn bạn đã đánh giá {score} sao! Chúc bạn thượng lộ bình an.")
+        rescue_code = request.POST.get("rescue_id", "")
+        
+        target_req = RescueRequest.objects.filter(code=rescue_code).first() if rescue_code else rescue_req
+        if target_req and target_req.helper and hasattr(target_req.helper, 'profile'):
+            hp = target_req.helper.profile
+            total = hp.total_rescues if hp.total_rescues > 0 else 1
+            hp.rating_avg = round((hp.rating_avg * (total - 1) + score) / total, 1)
+            hp.save()
+
+        messages.success(request, f"Cảm ơn bạn đã đánh giá {int(score)} sao cho người cứu hộ! Chúc bạn thượng lộ bình an.")
         return redirect("rescue_create")
+
+    helper = rescue_req.helper if rescue_req else None
+    helper_profile = getattr(helper, 'profile', None) if helper else None
 
     context = {
         "rescue_id": rescue_req.code if rescue_req else "SX-8921",
-        "helper_name": rescue_req.helper.get_full_name() if (rescue_req and rescue_req.helper) else "Nguyễn Văn Hùng",
+        "helper_name": helper.get_full_name() if (helper and helper.get_full_name()) else (helper.username if helper else "Nguyễn Văn Hùng"),
+        "helper_avatar": helper_profile.avatar_url if (helper_profile and helper_profile.avatar_url) else "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80",
+        "helper_rating": helper_profile.rating_avg if helper_profile else 4.9,
+        "issue_type": rescue_req.issue_type if rescue_req else "Vá săm xe máy",
     }
     return render(request, "reviews/rating_feedback.html", context)
 

@@ -5,7 +5,7 @@
 {% block content %}
 <div class="flex-1 flex flex-col bg-slate-50 min-h-0">
 
-  <!-- 1. Thanh tóm tắt thông tin ca cứu hộ -->
+  <!-- 1. Thanh tóm tắt thông tin ca cứu hộ & Huy hiệu Riêng tư 1-1 -->
   <div class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shadow-sm">
     <div>
       <div class="flex items-center gap-1.5">
@@ -28,6 +28,23 @@
     </div>
   </div>
 
+  <!-- Thanh chọn luồng chat riêng nếu Nạn nhân có nhiều thợ liên hệ khi ca PENDING -->
+  {% if rescuer_threads and is_victim %}
+  <div class="bg-slate-100 px-3 py-1.5 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-[11px]">
+    <span class="text-slate-500 font-bold shrink-0 flex items-center gap-1">
+      <i class="fa-solid fa-user-lock text-slate-400"></i> Đang chat riêng với:
+    </span>
+    <div class="flex items-center gap-1.5">
+      {% for t in rescuer_threads %}
+      <a href="{% url 'support_chat' %}?request_id={{ rescue_req.id }}&rescuer_id={{ t.user.id }}" 
+         class="px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 transition {% if t.is_active %}bg-red-600 text-white shadow-xs{% else %}bg-white border border-slate-200 text-slate-700 hover:bg-slate-50{% endif %}">
+        <span>{{ t.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- 2. Thẻ Thông Tin Đối Phương & Thống Nhất Phương Án / Chi Phí -->
   <div class="p-3">
     <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
@@ -35,9 +52,9 @@
         <div class="flex items-center gap-2.5">
           <div class="relative">
             <img 
-              src="{{ helper_profile.avatar_url|default:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' }}" 
+              src="{{ counterpart_avatar|default:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' }}" 
               alt="Avatar" 
-              class="w-11 h-11 rounded-full object-cover border-2 border-red-500"
+              class="w-11 h-11 rounded-full object-cover border-2 {% if is_victim %}border-emerald-500{% else %}border-red-500{% endif %}"
             />
             <span class="absolute -bottom-1 -right-1 bg-emerald-500 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white">
               <i class="fa-solid fa-check"></i>
@@ -45,22 +62,25 @@
           </div>
           <div>
             <div class="flex items-center gap-1.5">
-              <h2 class="font-extrabold text-slate-800 text-xs">{{ helper_name }}</h2>
-              {% if helper_profile %}
+              <h2 class="font-extrabold text-slate-800 text-xs">{{ counterpart_name }}</h2>
+              <span class="text-[9px] bg-slate-100 text-slate-700 font-bold px-1.5 py-0.2 rounded">
+                {{ counterpart_role|default:"Đối tác" }}
+              </span>
+              {% if counterpart_rating %}
               <span class="text-[10px] bg-amber-50 text-amber-700 font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5">
-                <i class="fa-solid fa-star text-amber-500"></i> {{ helper_profile.rating_avg|default:"4.9" }}
+                <i class="fa-solid fa-star text-amber-500"></i> {{ counterpart_rating }}
               </span>
               {% endif %}
             </div>
             <p class="text-[11px] text-slate-500 mt-0.5">
-              <i class="fa-solid fa-motorcycle text-slate-400"></i> {{ helper_profile.vehicle_type|default:"Xe máy hỗ trợ" }} • Cách <strong>{{ distance_km }} km</strong>
+              {{ counterpart_sub }} • Cách <strong>{{ distance_km }} km</strong>
             </p>
           </div>
         </div>
 
         <!-- Nút gọi điện thoại nhanh -->
         <a 
-          href="tel:{{ helper_phone }}" 
+          href="tel:{{ counterpart_phone }}" 
           class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-sm shadow-sm transition"
           title="Gọi điện trao đổi trực tiếp"
         >
@@ -68,30 +88,40 @@
         </a>
       </div>
 
-      <!-- Thống nhất thỏa thuận chi phí & Nút hành động chấp nhận/từ chối -->
-      <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between">
-        <div>
-          <span class="text-[9px] uppercase text-slate-400 font-bold block">Phí hỗ trợ dự kiến:</span>
-          <span class="text-xs font-black text-red-600">{{ proposed_fee }}</span>
-        </div>
+      <!-- Nút hành động chấp nhận/từ chối -->
+      <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-end">
 
-        <!-- Nếu ca đang PENDING và người dùng là thợ hoặc chưa nhận ca -->
+        <!-- Nếu ca đang PENDING: Thợ thấy nút Nhận/Từ chối, Nạn nhân thấy trạng thái chờ -->
         {% if rescue_req and rescue_req.status == 'PENDING' %}
-        <div class="flex items-center gap-1.5">
-          <form method="POST" action="{% url 'reject_request' rescue_req.id %}">
-            {% csrf_token %}
-            <button type="submit" class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-600 text-[11px] font-semibold hover:bg-slate-100 transition">
-              Từ chối
-            </button>
-          </form>
-          <form method="POST" action="{% url 'accept_request' rescue_req.id %}">
-            {% csrf_token %}
-            <button type="submit" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-md shadow-emerald-600/30 flex items-center gap-1 transition">
-              <i class="fa-solid fa-circle-check"></i>
-              <span>Chấp Nhận</span>
-            </button>
-          </form>
-        </div>
+          {% if is_victim %}
+          <div class="flex items-center gap-1.5">
+            <span class="bg-amber-50 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1">
+              <i class="fa-solid fa-radar animate-spin text-amber-600"></i> Đang chờ thợ nhận ca...
+            </span>
+            <form method="POST" action="{% url 'cancel_request' rescue_req.id %}" onsubmit="return confirm('Bạn có chắc chắn muốn hủy yêu cầu cứu hộ này?');">
+              {% csrf_token %}
+              <button type="submit" class="px-2 py-1 rounded-lg border border-slate-300 text-slate-500 text-[10px] font-medium hover:bg-slate-100 transition">
+                Hủy ca
+              </button>
+            </form>
+          </div>
+          {% else %}
+          <div class="flex items-center gap-1.5">
+            <form method="POST" action="{% url 'reject_request' rescue_req.id %}">
+              {% csrf_token %}
+              <button type="submit" class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-600 text-[11px] font-semibold hover:bg-slate-100 transition">
+                Từ chối
+              </button>
+            </form>
+            <form method="POST" action="{% url 'accept_request' rescue_req.id %}">
+              {% csrf_token %}
+              <button type="submit" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-md shadow-emerald-600/30 flex items-center gap-1 transition">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Chấp Nhận</span>
+              </button>
+            </form>
+          </div>
+          {% endif %}
         {% else %}
         <a href="{% url 'live_tracking' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% endif %}" class="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-md shadow-red-600/30 flex items-center gap-1 transition">
           <i class="fa-solid fa-route"></i>
@@ -149,7 +179,7 @@
 
   <!-- 4. Thanh nhập nội dung tin nhắn gửi đi -->
   <div class="bg-white border-t border-slate-200 p-2.5 shrink-0 z-10">
-    <form method="POST" action="{% url 'support_chat' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% endif %}" class="flex items-center gap-2">
+    <form method="POST" action="{% url 'support_chat' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% if is_victim and rescuer_user and not rescue_req.helper %}&rescuer_id={{ rescuer_user.id }}{% endif %}{% endif %}" class="flex items-center gap-2">
       {% csrf_token %}
 
       <!-- Nút chụp ảnh nhanh -->
