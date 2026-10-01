@@ -108,6 +108,12 @@ class RescueRequest(models.Model):
     def __str__(self):
         return f"[{self.code}] {self.issue_type} - {self.victim.get_full_name() or self.victim.username}"
 
+    @property
+    def image_list(self):
+        if not self.image_url:
+            return []
+        return [url.strip() for url in self.image_url.split(',') if url.strip()]
+
     def can_be_accepted(self):
         """Business rule 7: Yêu cầu chỉ có thể tiếp nhận khi đang ở trạng thái PENDING"""
         return self.status == 'PENDING' and self.helper is None

@@ -115,6 +115,24 @@
               <i class="fa-solid fa-location-dot text-red-500 mt-0.5 shrink-0"></i>
               <span>{{ active_request.location_address }}</span>
             </p>
+
+            {% if active_request.image_list %}
+            <div class="pt-2 border-t border-amber-200/60">
+              <span class="text-[10px] font-bold text-slate-600 block mb-1.5 flex items-center gap-1">
+                <i class="fa-solid fa-camera text-red-500"></i> Ảnh hiện trường đính kèm ({{ active_request.image_list|length }} ảnh):
+              </span>
+              <div class="grid {% if active_request.image_list|length == 1 %}grid-cols-1{% elif active_request.image_list|length == 2 %}grid-cols-2{% else %}grid-cols-3{% endif %} gap-1.5">
+                {% for img in active_request.image_list %}
+                <button type="button" onclick="openImageLightbox(this)" data-img-src="{{ img }}" class="block rounded-xl overflow-hidden border border-amber-200 shadow-2xs h-24 hover:opacity-95 transition text-left cursor-pointer w-full relative group">
+                  <img src="{{ img }}" alt="Ảnh hiện trường" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                  <span class="absolute bottom-1 right-1 bg-black/60 text-white text-[8px] px-1.5 py-0.5 rounded flex items-center gap-0.5 backdrop-blur-xs">
+                    <i class="fa-solid fa-magnifying-glass-plus"></i> Xem lớn
+                  </span>
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
           </div>
 
           <!-- Danh sách thợ cứu hộ quanh bạn đang nhận chuông thông báo -->
@@ -130,24 +148,40 @@
             </div>
 
             {% if nearby_rescuers %}
-              <div class="space-y-1.5">
+              <div class="space-y-2">
                 {% for helper_p in nearby_rescuers %}
-                <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                  <div class="flex items-center gap-2">
-                    <img src="{{ helper_p.avatar_url }}" class="w-7 h-7 rounded-full object-cover border border-slate-300" alt="Thợ">
-                    <div>
-                      <div class="font-bold text-slate-800 flex items-center gap-1">
-                        {{ helper_p.user.get_full_name|default:helper_p.user.username }}
-                        <span class="text-[9px] text-amber-600 font-bold"><i class="fa-solid fa-star text-amber-500"></i> {{ helper_p.rating_avg }}</span>
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs hover:border-blue-200 transition">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <img src="{{ helper_p.avatar_url }}" class="w-8 h-8 rounded-full object-cover border border-slate-300 shrink-0" alt="Thợ">
+                      <div class="min-w-0">
+                        <div class="font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                          {{ helper_p.user.get_full_name|default:helper_p.user.username }}
+                          <span class="text-[9px] text-amber-600 font-bold bg-amber-50 px-1 py-0.2 rounded shrink-0 flex items-center gap-0.5">
+                            <i class="fa-solid fa-star text-amber-500 text-[8px]"></i> {{ helper_p.rating_avg }}
+                          </span>
+                        </div>
+                        <div class="text-[10px] text-slate-500 truncate mt-0.5">
+                          {{ helper_p.vehicle_type }} • <span class="font-semibold text-red-600">Cách ~{{ helper_p.distance_km }} km</span>
+                        </div>
                       </div>
-                      <div class="text-[10px] text-slate-500">{{ helper_p.vehicle_type }}</div>
                     </div>
-                  </div>
-                  <div class="text-right">
-                    <span class="text-[10px] font-bold text-red-600 block">Cách ~{{ helper_p.distance_km }} km</span>
-                    <span class="text-[9px] text-emerald-600 font-medium flex items-center gap-1 justify-end">
-                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Đang nhận tin
-                    </span>
+                    
+                    <!-- Cụm nút hành động riêng cho từng thợ: Nhắn tin & Gọi điện -->
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <!-- Nút Nhắn tin (Chỉ icon) -->
+                      <a href="{% url 'support_chat' %}?request_id={{ active_request.id }}&rescuer_id={{ helper_p.user.id }}" 
+                         class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 flex items-center justify-center transition shadow-xs"
+                         title="Nhắn tin với {{ helper_p.user.get_full_name|default:helper_p.user.username }}">
+                        <i class="fa-regular fa-comment-dots text-sm"></i>
+                      </a>
+                      <!-- Nút Gọi điện (Chỉ icon) -->
+                      <a href="tel:{{ helper_p.phone }}" 
+                         class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-200 flex items-center justify-center transition shadow-xs"
+                         title="Gọi điện cho {{ helper_p.user.get_full_name|default:helper_p.user.username }} ({{ helper_p.phone }})">
+                        <i class="fa-solid fa-phone text-xs"></i>
+                      </a>
+                    </div>
                   </div>
                 </div>
                 {% endfor %}
@@ -157,18 +191,12 @@
             {% endif %}
           </div>
 
-          <!-- Nút hành động dành cho Nạn nhân -->
-          <div class="flex items-center gap-2 pt-2 border-t border-slate-100">
-            <!-- Mở Chat trao đổi -->
-            <a href="{% url 'support_chat' %}?request_id={{ active_request.id }}" class="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 transition">
-              <i class="fa-regular fa-comments"></i>
-              <span>Nhắn Tin Trao Đổi</span>
-            </a>
-
+          <!-- Thanh hành động dưới cùng -->
+          <div class="flex items-center justify-end pt-2 border-t border-slate-100">
             <!-- Nút Hủy yêu cầu cứu hộ -->
-            <form method="POST" action="{% url 'cancel_request' active_request.id %}" class="shrink-0" onsubmit="return confirm('Bạn có chắc chắn muốn hủy yêu cầu cứu hộ này không?');">
+            <form method="POST" action="{% url 'cancel_request' active_request.id %}" onsubmit="return confirm('Bạn có chắc chắn muốn hủy yêu cầu cứu hộ này không?');">
               {% csrf_token %}
-              <button type="submit" class="py-2 px-3 border border-slate-300 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold flex items-center gap-1 transition">
+              <button type="submit" class="py-1.5 px-3 border border-slate-300 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold flex items-center gap-1 transition">
                 <i class="fa-solid fa-xmark"></i>
                 <span>Hủy ca</span>
               </button>

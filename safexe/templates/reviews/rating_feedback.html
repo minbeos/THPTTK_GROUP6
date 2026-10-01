@@ -103,13 +103,22 @@
     <!-- Tải ảnh xe sau khi cứu hộ (Tùy chọn) -->
     <div class="space-y-1.5">
       <label class="block font-bold text-slate-700">Tải ảnh xe đã sửa xong (Nếu có):</label>
-      <div class="flex items-center gap-3">
-        <label class="w-16 h-16 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400 transition">
+      <div class="flex items-start gap-3">
+        <label class="w-16 h-16 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400 transition shrink-0">
           <i class="fa-solid fa-camera text-base mb-0.5"></i>
           <span class="text-[9px] font-medium">Thêm ảnh</span>
           <input type="file" name="review_image" id="reviewImage" accept="image/*" class="hidden">
         </label>
-        <p class="text-[11px] text-slate-400 flex-1 leading-snug">
+
+        <!-- Khung xem trước ảnh đánh giá -->
+        <div id="reviewImagePreviewContainer" class="hidden relative shrink-0">
+          <img id="reviewImagePreview" src="" alt="Ảnh xe sau cứu hộ" class="w-16 h-16 object-cover rounded-2xl border-2 border-emerald-500 shadow-sm">
+          <button type="button" id="btnRemoveReviewImg" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] shadow-sm hover:bg-red-700" title="Xóa ảnh">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <p class="text-[11px] text-slate-400 flex-1 leading-snug self-center" id="reviewImgHelpText">
           Gửi hình ảnh giúp xác nhận xe đã hoạt động bình thường và cộng điểm uy tín cho người hỗ trợ.
         </p>
       </div>
@@ -190,14 +199,33 @@
     });
   });
 
-  // 3. Hiển thị tên file ảnh
-  document.getElementById('reviewImage').addEventListener('change', function() {
-    const nameEl = document.getElementById('reviewImageName');
-    if (this.files.length > 0) {
-      nameEl.textContent = `Đã chọn: ${this.files[0].name}`;
-    } else {
-      nameEl.textContent = '';
+  // 3. Hiển thị ảnh xem trước ngay khi chọn
+  const reviewImgInput = document.getElementById('reviewImage');
+  const reviewImgContainer = document.getElementById('reviewImagePreviewContainer');
+  const reviewImgPreview = document.getElementById('reviewImagePreview');
+  const btnRemoveReview = document.getElementById('btnRemoveReviewImg');
+  const reviewHelp = document.getElementById('reviewImgHelpText');
+
+  reviewImgInput.addEventListener('change', function() {
+    if (this.files && this.files[0]) {
+      const file = this.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        reviewImgPreview.src = e.target.result;
+        reviewImgContainer.classList.remove('hidden');
+        if (reviewHelp) reviewHelp.innerHTML = `<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> Đã chọn ảnh:</span><br><span class="text-[10px] text-slate-500 font-mono">${file.name}</span>`;
+      };
+      reader.readAsDataURL(file);
     }
   });
+
+  if (btnRemoveReview) {
+    btnRemoveReview.addEventListener('click', function() {
+      reviewImgInput.value = '';
+      reviewImgPreview.src = '';
+      reviewImgContainer.classList.add('hidden');
+      if (reviewHelp) reviewHelp.textContent = 'Gửi hình ảnh giúp xác nhận xe đã hoạt động bình thường và cộng điểm uy tín cho người hỗ trợ.';
+    });
+  }
 </script>
 {% endblock %}

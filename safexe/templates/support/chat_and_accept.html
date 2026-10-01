@@ -28,22 +28,7 @@
     </div>
   </div>
 
-  <!-- Thanh chọn luồng chat riêng nếu Nạn nhân có nhiều thợ liên hệ khi ca PENDING -->
-  {% if rescuer_threads and is_victim %}
-  <div class="bg-slate-100 px-3 py-1.5 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-[11px]">
-    <span class="text-slate-500 font-bold shrink-0 flex items-center gap-1">
-      <i class="fa-solid fa-user-lock text-slate-400"></i> Đang chat riêng với:
-    </span>
-    <div class="flex items-center gap-1.5">
-      {% for t in rescuer_threads %}
-      <a href="{% url 'support_chat' %}?request_id={{ rescue_req.id }}&rescuer_id={{ t.user.id }}" 
-         class="px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 transition {% if t.is_active %}bg-red-600 text-white shadow-xs{% else %}bg-white border border-slate-200 text-slate-700 hover:bg-slate-50{% endif %}">
-        <span>{{ t.name }}</span>
-      </a>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
+
 
   <!-- 2. Thẻ Thông Tin Đối Phương & Thống Nhất Phương Án / Chi Phí -->
   <div class="p-3">

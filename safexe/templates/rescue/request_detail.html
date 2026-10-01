@@ -68,6 +68,26 @@
       </div>
       {% endif %}
 
+      <!-- Ảnh chụp hiện trường sự cố do chủ xe gửi -->
+      {% if rescue_req.image_list %}
+      <div class="space-y-1.5 pt-1">
+        <strong class="text-slate-700 block text-xs flex items-center gap-1">
+          <i class="fa-solid fa-camera text-red-500"></i>
+          <span>Ảnh chụp hiện trường sự cố ({{ rescue_req.image_list|length }} ảnh):</span>
+        </strong>
+        <div class="grid {% if rescue_req.image_list|length == 1 %}grid-cols-1{% elif rescue_req.image_list|length == 2 %}grid-cols-2{% else %}grid-cols-3{% endif %} gap-2">
+          {% for img in rescue_req.image_list %}
+          <button type="button" onclick="openImageLightbox(this)" data-img-src="{{ img }}" class="block group relative overflow-hidden rounded-xl border border-slate-200 shadow-xs h-32 hover:opacity-95 transition text-left cursor-pointer w-full">
+            <img src="{{ img }}" alt="Ảnh sự cố" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+            <span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5 backdrop-blur-xs">
+              <i class="fa-solid fa-magnifying-glass-plus"></i> Xem lớn
+            </span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
     </div>
 
     <!-- 2. Hồ Sơ Người Gặp Sự Cố (Alternative flow 6a) -->
@@ -153,7 +173,7 @@
             class="w-full py-3 px-4 rounded-2xl border-2 border-slate-300 text-slate-600 hover:bg-slate-100 active:scale-[0.98] font-bold text-xs flex items-center justify-center gap-1.5 transition"
           >
             <i class="fa-solid fa-xmark text-slate-400"></i>
-            <span>Từ Chối (NO)</span>
+            <span>Từ Chối</span>
           </button>
         </form>
 
@@ -165,7 +185,7 @@
             class="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition"
           >
             <i class="fa-solid fa-circle-check"></i>
-            <span>Chấp Nhận (YES)</span>
+            <span>Chấp Nhận</span>
           </button>
         </form>
       </div>

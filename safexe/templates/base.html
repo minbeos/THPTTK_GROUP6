@@ -82,7 +82,7 @@
     {% block header %}
     <header class="bg-red-600 text-white px-4 py-3 flex items-center justify-between shrink-0 z-30 shadow-md">
       <div class="flex items-center gap-2.5">
-        <a href="{% url 'rescue_create' %}" class="flex items-center gap-2 hover:opacity-90 transition">
+        <a href="{% if request.user.profile.role == 'RESCUER' %}{% url 'rescuer_dashboard' %}{% else %}{% url 'rescue_create' %}{% endif %}" class="flex items-center gap-2 hover:opacity-90 transition">
           <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-black text-amber-300 text-base shadow-sm">
             <i class="fa-solid fa-truck-medical"></i>
           </div>
@@ -143,39 +143,166 @@
     <!-- Bottom Navigation Bar (Cố định ở đáy khung màn hình điện thoại) -->
     {% block bottom_nav %}
     <nav class="bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around shrink-0 z-30 shadow-lg text-slate-500 text-[10px] font-medium">
-      <a href="{% url 'rescue_create' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if request.path == '/' or '/rescue/create' in request.path %}text-red-600 font-bold{% endif %}">
-        <i class="fa-solid fa-triangle-exclamation text-base"></i>
-        <span>Gửi SOS</span>
-      </a>
-      {% if request.user.profile.role == 'VICTIM' or request.user.username == 'nan_nhan' or not request.user.is_authenticated %}
-      <a href="{% url 'rescuer_dashboard' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescuer' in request.path or '/victim' in request.path %}text-red-600 font-bold{% endif %}">
-        <i class="fa-solid fa-clock-rotate-left text-base"></i>
-        <span>Tiến trình ca</span>
-      </a>
+      {% if request.user.profile.role == 'RESCUER' %}
+        <!-- THANH ĐIỀU HƯỚNG DÀNH RIÊNG CHO THỢ CỨU HỘ -->
+        <a href="{% url 'rescuer_dashboard' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition flex-1 {% if '/rescuer' in request.path %}text-red-600 font-bold{% endif %}">
+          <i class="fa-solid fa-tower-broadcast text-base"></i>
+          <span>Nhận ca</span>
+        </a>
+        <a href="{% url 'support_chat' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition flex-1 {% if '/rescue/support-chat' in request.path %}text-red-600 font-bold{% endif %}">
+          <i class="fa-regular fa-comments text-base"></i>
+          <span>Trao đổi</span>
+        </a>
+        <a href="{% url 'live_tracking' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition flex-1 {% if '/rescue/tracking' in request.path %}text-red-600 font-bold{% endif %}">
+          <i class="fa-solid fa-location-crosshairs text-base"></i>
+          <span>Định vị & Lộ trình</span>
+        </a>
       {% else %}
-      <a href="{% url 'rescuer_dashboard' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescuer' in request.path or '/victim' in request.path %}text-red-600 font-bold{% endif %}">
-        <i class="fa-solid fa-tower-broadcast text-base"></i>
-        <span>Nhận ca</span>
-      </a>
-      {% endif %}
-      <a href="{% url 'support_chat' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescue/support-chat' in request.path %}text-red-600 font-bold{% endif %}">
-        <i class="fa-regular fa-comments text-base"></i>
-        <span>Trao đổi</span>
-      </a>
-      <a href="{% url 'live_tracking' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescue/tracking' in request.path %}text-red-600 font-bold{% endif %}">
-        <i class="fa-solid fa-location-crosshairs text-base"></i>
-        <span>Định vị</span>
-      </a>
-      {% if request.user.profile.role == 'VICTIM' or request.user.username == 'nan_nhan' or not request.user.is_authenticated %}
-      <a href="{% url 'rating_feedback' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescue/rating' in request.path %}text-red-600 font-bold{% endif %}">
-        <i class="fa-regular fa-star text-base"></i>
-        <span>Đánh giá</span>
-      </a>
+        <!-- THANH ĐIỀU HƯỚNG DÀNH CHO NGƯỜI GẶP NẠN -->
+        <a href="{% url 'rescue_create' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if request.path == '/' or '/rescue/create' in request.path %}text-red-600 font-bold{% endif %}">
+          <i class="fa-solid fa-triangle-exclamation text-base"></i>
+          <span>Gửi SOS</span>
+        </a>
+        <a href="{% url 'victim_dashboard' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/victim' in request.path %}text-red-600 font-bold{% endif %}">
+          <i class="fa-solid fa-clock-rotate-left text-base"></i>
+          <span>Tiến trình ca</span>
+        </a>
+        <a href="{% url 'support_chat' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescue/support-chat' in request.path %}text-red-600 font-bold{% endif %}">
+          <i class="fa-regular fa-comments text-base"></i>
+          <span>Trao đổi</span>
+        </a>
+        <a href="{% url 'live_tracking' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescue/tracking' in request.path %}text-red-600 font-bold{% endif %}">
+          <i class="fa-solid fa-location-crosshairs text-base"></i>
+          <span>Định vị</span>
+        </a>
+        <a href="{% url 'rating_feedback' %}" class="flex flex-col items-center gap-0.5 hover:text-red-600 transition {% if '/rescue/rating' in request.path %}text-red-600 font-bold{% endif %}">
+          <i class="fa-regular fa-star text-base"></i>
+          <span>Đánh giá</span>
+        </a>
       {% endif %}
     </nav>
     {% endblock %}
 
   </div>
+
+  <!-- In-page Lightbox Modal xem ảnh lớn không chuyển trang -->
+  <div id="imageLightboxModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3" onclick="closeImageLightbox()">
+    <!-- Nút đóng nổi bật góc trên bên phải -->
+    <button type="button" onclick="closeImageLightbox()" class="fixed top-4 right-4 z-50 w-11 h-11 rounded-full bg-white/20 hover:bg-red-600 text-white flex items-center justify-center text-lg shadow-2xl backdrop-blur-md transition active:scale-90 cursor-pointer border border-white/30" title="Đóng (Esc)">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <div class="relative max-w-full max-h-full flex flex-col items-center justify-center p-2" onclick="event.stopPropagation()">
+      <!-- Spinner khi đang tải ảnh -->
+      <div id="lightboxSpinner" class="flex flex-col items-center justify-center text-white/90 gap-2.5 py-12">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-red-500"></i>
+        <span class="text-xs font-medium tracking-wide">Đang tải ảnh...</span>
+      </div>
+
+      <!-- Khung báo lỗi nếu ảnh không mở được -->
+      <div id="lightboxError" class="hidden flex flex-col items-center justify-center text-center p-5 bg-slate-900/95 rounded-2xl border border-red-500/50 text-white max-w-xs shadow-2xl">
+        <i class="fa-solid fa-triangle-exclamation text-3xl text-red-500 mb-2"></i>
+        <h5 class="text-xs font-bold mb-1">Không thể tải ảnh này</h5>
+        <p class="text-[10px] text-slate-400 break-all mb-3" id="lightboxErrorUrl"></p>
+        <button type="button" onclick="closeImageLightbox()" class="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition">Đóng</button>
+      </div>
+
+      <!-- Ảnh lớn -->
+      <img id="lightboxImageSrc" 
+           src="" 
+           alt="Ảnh sự cố" 
+           class="hidden max-w-[92vw] max-h-[82vh] w-auto h-auto object-contain rounded-2xl shadow-2xl border border-white/20 select-none bg-slate-950 transition-opacity duration-200"
+           onload="onLightboxLoaded()"
+           onerror="onLightboxError()">
+
+      <!-- Chú thích hỗ trợ người dùng -->
+      <div id="lightboxCaption" class="hidden mt-3 text-center text-[11px] text-white/70 flex items-center gap-1.5 select-none bg-black/50 px-3.5 py-1 rounded-full backdrop-blur-xs">
+        <i class="fa-solid fa-circle-info text-amber-400"></i>
+        <span>Nhấn nền đen hoặc bấm phím <kbd class="px-1.5 py-0.2 bg-white/20 rounded font-mono text-[9px]">ESC</kbd> để đóng</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openImageLightbox(target) {
+      if (!target) return;
+
+      let url = '';
+      if (typeof target === 'string') {
+        url = target;
+      } else if (target instanceof HTMLElement) {
+        const innerImg = target.querySelector('img') || (target.tagName === 'IMG' ? target : null);
+        if (innerImg && (innerImg.currentSrc || innerImg.src)) {
+          url = innerImg.currentSrc || innerImg.src;
+        } else {
+          url = target.getAttribute('data-img-src') || target.getAttribute('href') || '';
+        }
+      }
+
+      if (!url) return;
+
+      // Chuẩn hóa URL an toàn
+      try {
+        url = encodeURI(decodeURI(url));
+      } catch(e) {}
+
+      const modal = document.getElementById('imageLightboxModal');
+      const img = document.getElementById('lightboxImageSrc');
+      const spinner = document.getElementById('lightboxSpinner');
+      const errBox = document.getElementById('lightboxError');
+      const caption = document.getElementById('lightboxCaption');
+
+      if (!modal || !img) return;
+
+      // Reset trạng thái
+      img.classList.add('hidden');
+      if (errBox) errBox.classList.add('hidden');
+      if (spinner) spinner.classList.remove('hidden');
+      if (caption) caption.classList.add('hidden');
+
+      img.src = url;
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function onLightboxLoaded() {
+      const img = document.getElementById('lightboxImageSrc');
+      const spinner = document.getElementById('lightboxSpinner');
+      const caption = document.getElementById('lightboxCaption');
+      if (spinner) spinner.classList.add('hidden');
+      if (img) img.classList.remove('hidden');
+      if (caption) caption.classList.remove('hidden');
+    }
+
+    function onLightboxError() {
+      const img = document.getElementById('lightboxImageSrc');
+      const spinner = document.getElementById('lightboxSpinner');
+      const errBox = document.getElementById('lightboxError');
+      const errUrl = document.getElementById('lightboxErrorUrl');
+      if (spinner) spinner.classList.add('hidden');
+      if (img) img.classList.add('hidden');
+      if (errBox) {
+        errBox.classList.remove('hidden');
+        if (errUrl && img) errUrl.textContent = img.src || '';
+      }
+    }
+
+    function closeImageLightbox() {
+      const modal = document.getElementById('imageLightboxModal');
+      const img = document.getElementById('lightboxImageSrc');
+      if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        if (img) img.src = '';
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeImageLightbox();
+      }
+    });
+  </script>
 
   {% block extra_js %}{% endblock %}
 </body>

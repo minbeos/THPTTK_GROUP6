@@ -1,3 +1,4 @@
+import os
 import math
 import random
 from django.shortcuts import render, redirect, get_object_or_404
@@ -131,13 +132,12 @@ def register_view(request):
 # 2. TẠO YÊU CẦU CỨU HỘ KHẨN CẤP (SOS)
 # ==========================================
 def create_request_view(request):
-    """
-    Main flow:
-    1. Người gặp sự cố gửi yêu cầu cứu hộ.
-    2. Hệ thống lưu yêu cầu và tìm người hỗ trợ phù hợp trong bán kính 10 km.
-    3. Hệ thống gửi thông báo yêu cầu cứu hộ đến người hỗ trợ phù hợp.
-    """
     current_user = get_current_user(request)
+    profile = getattr(current_user, 'profile', None)
+
+    # Thợ cứu hộ không dùng trang tạo SOS -> Tự động chuyển về Bảng nhận ca của thợ
+    if profile and profile.role == 'RESCUER':
+        return redirect("rescuer_dashboard")
     
     if request.method == "POST":
         location_address = request.POST.get("location_address", "120 Hoàng Minh Thảo, Liên Chiểu, Đà Nẵng")
@@ -181,13 +181,39 @@ def create_request_view(request):
         # Sinh mã cứu hộ độc nhất
         code = f"SX-{random.randint(1000, 9999)}"
 
+        # Nếu đang ở tài khoản Thợ mà bấm gửi SOS, tự động gán cho tài khoản Nạn nhân để dữ liệu chuẩn vai trò
+        actual_victim = current_user
+        if hasattr(current_user, 'profile') and current_user.profile.role == 'RESCUER':
+            demo_victim = User.objects.filter(username='nan_nhan').first()
+            if demo_victim:
+                actual_victim = demo_victim
+
+        # Tự động hủy các ca cũ đang PENDING chưa có thợ nhận của nạn nhân này để tránh trùng lặp
+        RescueRequest.objects.filter(victim=actual_victim, status='PENDING').update(status='CANCELLED')
+
+        # Xử lý lưu các ảnh hiện trường sự cố do người dùng tải lên (hỗ trợ nhiều ảnh)
+        image_urls = []
+        uploaded_images = request.FILES.getlist('incident_images')
+        if uploaded_images:
+            import time
+            from django.core.files.storage import default_storage
+            from django.core.files.base import ContentFile
+            for idx, img_file in enumerate(uploaded_images[:3]):
+                ext = os.path.splitext(img_file.name)[1].lower() or '.jpg'
+                file_name = f"incidents/{code}_{idx}_{int(time.time())}{ext}"
+                saved_path = default_storage.save(file_name, ContentFile(img_file.read()))
+                image_urls.append(f"/media/{saved_path}")
+
+        image_url = ",".join(image_urls)
+
         # Pre-condition: Lưu yêu cầu với thông tin vị trí, xe, sự cố
         rescue_req = RescueRequest.objects.create(
             code=code,
-            victim=current_user,
+            victim=actual_victim,
             vehicle_type=vehicle_type,
             issue_type=issue_type,
             description=description,
+            image_url=image_url,
             location_address=location_address,
             latitude=latitude,
             longitude=longitude,
@@ -246,7 +272,7 @@ def create_request_view(request):
                 f"Tín hiệu #{rescue_req.code} đã phát! Hiện chưa có người hỗ trợ nào trong bán kính 10km. Hệ thống đang giữ yêu cầu và tiếp tục quét mở rộng..."
             )
 
-        return redirect(f"/rescue/support-chat/?request_id={rescue_req.id}")
+        return redirect("victim_dashboard")
 
     # Lấy các yêu cầu gần nhất của người dùng hiện tại
     my_requests = RescueRequest.objects.filter(victim=current_user).order_by('-created_at')[:5]
@@ -283,36 +309,22 @@ def rescuer_dashboard_view(request, view_as=None):
     if not profile:
         profile = UserProfile.objects.create(user=current_user, role='RESCUER', rescuer_status='READY')
 
-    # Xác định góc nhìn: ưu tiên tham số URL / query param, sau đó đến role thực tế của user
-    req_view = request.GET.get('view_as') or view_as
-    if not req_view:
-        if profile.role == 'VICTIM' or current_user.username == 'nan_nhan':
-            req_view = 'victim'
-        else:
-            req_view = 'rescuer'
+    # Xác định góc nhìn:
+    # Nếu user là Thợ (RESCUER), LUÔN LUÔN hiển thị Bảng nhận ca (rescuer_dashboard)
+    if profile.role == 'RESCUER':
+        req_view = 'rescuer'
+    else:
+        req_view = request.GET.get('view_as') or view_as or 'victim'
 
     # ----------------------------------------------------
     # GÓC NHÌN 1: DÀNH CHO NGƯỜI GẶP NẠN (VICTIM DASHBOARD)
     # ----------------------------------------------------
     if req_view == 'victim':
-        # 1. Tìm ca cứu hộ đang hoạt động của nạn nhân (PENDING, ACCEPTED, IN_PROGRESS, ARRIVED)
+        # 1. Tìm ca cứu hộ đang hoạt động của chính nạn nhân này (PENDING, ACCEPTED, IN_PROGRESS, ARRIVED)
         active_request = RescueRequest.objects.filter(
             victim=current_user,
             status__in=['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'ARRIVED']
         ).order_by('-created_at').first()
-
-        # Nếu không có ca của current_user, tìm ca được lưu gần nhất trong session
-        if not active_request and request.session.get('current_rescue_id'):
-            active_request = RescueRequest.objects.filter(
-                id=request.session['current_rescue_id'],
-                status__in=['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'ARRIVED']
-            ).first()
-
-        # Nếu vẫn chưa có và đây là nạn nhân demo, lấy ca gần nhất trong hệ thống để demo trực quan
-        if not active_request and current_user.username == 'nan_nhan':
-            active_request = RescueRequest.objects.filter(
-                status__in=['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'ARRIVED']
-            ).order_by('-created_at').first()
 
         nearby_rescuers = []
         helper_profile = None
@@ -618,6 +630,8 @@ def cancel_request_view(request, request_id):
             action='CANCELLED',
             note=f"Người gặp nạn đã chủ động hủy ca #{req.code}"
         )
+        if request.session.get('current_rescue_id') == req.id:
+            request.session.pop('current_rescue_id', None)
         messages.info(request, f"Đã hủy yêu cầu cứu hộ #{req.code} thành công.")
     else:
         messages.error(request, "Bạn không có quyền hủy yêu cầu này.")
@@ -663,7 +677,7 @@ def support_chat_view(request):
 
     # Xác định người gặp sự cố (victim)
     victim_user = rescue_req.victim
-    is_victim = (current_user == victim_user)
+    is_victim = (current_user == victim_user) and not (profile and profile.role == 'RESCUER')
 
     # ====================================================
     # KIỂM TRA QUYỀN TRUY CẬP VÀ XÁC ĐỊNH ĐỐI TÁC 1 - 1
@@ -709,12 +723,22 @@ def support_chat_view(request):
                     ).exclude(user=victim_user).first()
                     rescuer_user = first_r.user if first_r else None
 
-    # Lấy danh sách các thợ có luồng chat riêng với nạn nhân trong ca này (để nạn nhân chuyển qua lại)
+    # Lấy danh sách các thợ có thể trao đổi với nạn nhân trong ca này (để nạn nhân chuyển qua lại giữa các thợ)
     rescuer_threads = []
     if is_victim and not rescue_req.helper:
-        rescuers_with_chat = User.objects.filter(
-            sent_chat_messages__request=rescue_req
-        ).exclude(id=victim_user.id).distinct()
+        # Lấy danh sách thợ đã nhận thông báo ca này hoặc đã gửi tin nhắn
+        notified_ids = list(rescue_req.response_logs.values_list('rescuer_id', flat=True))
+        chat_ids = list(ChatMessage.objects.filter(request=rescue_req).exclude(sender=victim_user).values_list('sender_id', flat=True))
+        all_candidate_ids = list(dict.fromkeys(notified_ids + chat_ids))
+
+        if not all_candidate_ids:
+            all_candidate_ids = list(UserProfile.objects.filter(
+                role__in=['RESCUER', 'BOTH'],
+                user__is_active=True,
+                rescuer_status='READY'
+            ).exclude(user=victim_user).values_list('user_id', flat=True))
+
+        rescuers_with_chat = User.objects.filter(id__in=all_candidate_ids).exclude(id=victim_user.id).distinct()
 
         for r_u in rescuers_with_chat:
             r_p = getattr(r_u, 'profile', None)
@@ -905,6 +929,9 @@ def update_request_status_view(request, request_id):
                 req.helper.profile.rescuer_status = 'READY'
                 req.helper.profile.total_rescues += 1
                 req.helper.profile.save()
+
+            if request.session.get('current_rescue_id') == req.id:
+                request.session.pop('current_rescue_id', None)
 
             messages.success(request, f"Ca cứu hộ #{req.code} đã hoàn thành xuất sắc!")
             
