@@ -1,29 +1,33 @@
 {% extends 'base.html' %}
 
-{% block title %}SafeXe - Theo Dõi Vị Trí Cứu Hộ Thời Gian Thực{% endblock %}
+{% block title %}SafeXe - Bản Đồ Dẫn Đường Real-Time & Theo Dõi Trạng Thái{% endblock %}
 
 {% block extra_css %}
 <style>
-  /* Hiệu ứng radar quét sóng định vị */
-  .radar-pulse {
-    position: relative;
+  #realtimeMap {
+    width: 100%;
+    height: 380px;
+    z-index: 1;
   }
-  .radar-pulse::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 60px;
-    height: 60px;
-    background: rgba(239, 68, 68, 0.3);
+  .custom-radar-marker {
+    background: transparent;
+    border: none;
+  }
+  .pulse-ring {
+    border: 3px solid #ef4444;
     border-radius: 50%;
-    transform: translate(-50%, -50%);
-    animation: radar-expand 2s infinite ease-out;
-    pointer-events: none;
+    height: 36px;
+    width: 36px;
+    position: absolute;
+    left: -18px;
+    top: -18px;
+    animation: pulsate 1.8s ease-out infinite;
+    opacity: 0;
   }
-  @keyframes radar-expand {
-    0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+  @keyframes pulsate {
+    0% { transform: scale(0.1); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: scale(1.6); opacity: 0; }
   }
 </style>
 {% endblock %}
@@ -31,76 +35,66 @@
 {% block content %}
 <div class="flex-1 flex flex-col relative bg-slate-100">
 
-  <!-- 1. Thanh Tiến Trình Cứu Hộ (Stepper 5 Bước) -->
-  <div class="bg-white border-b border-slate-200 px-4 py-3 shadow-sm z-10">
-    <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-1">
-      <span class="text-emerald-600 flex items-center gap-1">
-        <i class="fa-solid fa-circle-check"></i> Đã nhận ca
+  <!-- 1. Thanh Tiến Trình Cứu Hộ (Stepper 4 Bước theo trạng thái thực) -->
+  <div class="bg-white border-b border-slate-200 px-4 py-2.5 shadow-sm z-10">
+    <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-1.5">
+      <span class="{% if status == 'ACCEPTED' or status == 'IN_PROGRESS' or status == 'ARRIVED' or status == 'COMPLETED' %}text-emerald-600{% endif %} flex items-center gap-1">
+        <i class="fa-solid fa-circle-check"></i> Đã tiếp nhận
       </span>
-      <span class="text-red-600 flex items-center gap-1">
-        <span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
-        Đang di chuyển
+      <span class="{% if status == 'IN_PROGRESS' %}text-red-600 animate-pulse font-extrabold{% elif status == 'ARRIVED' or status == 'COMPLETED' %}text-emerald-600{% endif %} flex items-center gap-1">
+        <i class="fa-solid fa-motorcycle"></i> Đang di chuyển
       </span>
-      <span>Đã tới</span>
-      <span>Hoàn tất</span>
+      <span class="{% if status == 'ARRIVED' %}text-red-600 animate-pulse font-extrabold{% elif status == 'COMPLETED' %}text-emerald-600{% endif %} flex items-center gap-1">
+        <i class="fa-solid fa-location-dot"></i> Đã tới
+      </span>
+      <span class="{% if status == 'COMPLETED' %}text-emerald-600 font-extrabold{% endif %} flex items-center gap-1">
+        <i class="fa-solid fa-flag-checkered"></i> Hoàn tất
+      </span>
     </div>
 
-    <!-- Thanh tiến trình vạch kẻ -->
-    <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-      <div class="bg-gradient-to-r from-emerald-500 to-red-600 h-1.5 rounded-full w-[45%] transition-all duration-500"></div>
+    <!-- Thanh tiến trình vạch kẻ động -->
+    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+      <div class="bg-gradient-to-r from-emerald-500 to-red-600 h-1.5 rounded-full transition-all duration-500
+        {% if status == 'ACCEPTED' %}w-[25%]
+        {% elif status == 'IN_PROGRESS' %}w-[60%]
+        {% elif status == 'ARRIVED' %}w-[85%]
+        {% elif status == 'COMPLETED' %}w-[100%]
+        {% else %}w-[30%]{% endif %}">
+      </div>
     </div>
   </div>
 
-  <!-- 2. Khung Bản Đồ Thời Gian Thực (Live GPS Map Container) -->
-  <div class="flex-1 relative bg-slate-200 min-h-[360px] flex items-center justify-center overflow-hidden">
-    
-    <!-- Lưới bản đồ mô phỏng (Map Grid Mockup) -->
-    <div class="absolute inset-0 opacity-40 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]"></div>
-    
-    <!-- Tuyến đường nét đứt nối 2 điểm (SVG Road Route) -->
-    <svg class="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M 90 280 Q 180 190 290 120" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="6,6" class="animate-pulse" />
-    </svg>
+  <!-- 2. Bản Đồ Lộ Trình Dẫn Đường Real-Time (Leaflet.js + OpenStreetMap) -->
+  <div class="relative w-full overflow-hidden shrink-0 h-[340px]">
+    <div 
+      id="realtimeMap"
+      data-victim-lat="{{ victim_lat|default:16.0725 }}"
+      data-victim-lng="{{ victim_lng|default:108.1520 }}"
+      data-helper-lat="{{ helper_lat|default:16.0780 }}"
+      data-helper-lng="{{ helper_lng|default:108.1580 }}"
+      data-victim-address="{{ rescue_req.location_address|default:'120 Hoàng Minh Thảo' }}"
+      data-helper-info="{{ helper_name }} ({{ helper_vehicle }})"
+      data-distance="{{ distance_km }}"
+    ></div>
 
-    <!-- Điểm 1: Vị trí của Người Gặp Nạn (Bạn) -->
-    <div class="absolute bottom-20 left-16 flex flex-col items-center radar-pulse">
-      <div class="bg-red-600 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white z-10">
-        <i class="fa-solid fa-person-falling-burst text-sm"></i>
+    <!-- Thẻ khoảng cách nổi ở góc trên bản đồ -->
+    <div class="absolute top-3 left-3 bg-white/95 backdrop-blur-sm border border-slate-200 px-3 py-1.5 rounded-2xl shadow-lg text-xs font-bold text-slate-800 flex items-center gap-2 z-[400]">
+      <span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
+      <div>
+        <span class="text-[10px] text-slate-400 block font-normal leading-none">Khoảng cách</span>
+        <span class="text-xs font-black text-red-600">{{ distance_km }} km</span>
       </div>
-      <span class="bg-slate-900/90 text-white text-[10px] px-2 py-0.5 rounded-md font-semibold mt-1 shadow-md whitespace-nowrap">
-        Vị trí của bạn
-      </span>
     </div>
 
-    <!-- Điểm 2: Vị trí của Thợ Cứu Hộ đang di chuyển tới -->
-    <div class="absolute top-20 right-16 flex flex-col items-center">
-      <div class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-2 border-white animate-bounce">
-        <i class="fa-solid fa-motorcycle text-base"></i>
-      </div>
-      <span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold mt-1 shadow-md whitespace-nowrap">
-        Thợ Nguyễn Văn Hùng
-      </span>
-    </div>
-
-    <!-- Thẻ khoảng cách nổi ở giữa tuyến đường -->
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm border border-slate-300 px-3 py-1 rounded-full shadow-lg text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
-      <i class="fa-solid fa-route text-red-500"></i>
-      <span>Còn 1.2 km</span>
-    </div>
-
-    <!-- Nút điều khiển bản đồ -->
-    <div class="absolute top-3 right-3 flex flex-col gap-2 z-10">
-      <button type="button" class="w-9 h-9 bg-white rounded-xl shadow-md flex items-center justify-center text-slate-700 hover:text-red-600 text-xs transition" title="Định vị lại tâm bản đồ">
+    <!-- Nút điều khiển định vị lại -->
+    <div class="absolute top-3 right-3 flex flex-col gap-2 z-[400]">
+      <button type="button" onclick="centerRoute()" class="w-9 h-9 bg-white rounded-xl shadow-md flex items-center justify-center text-slate-700 hover:text-red-600 text-xs transition" title="Căn chỉnh toàn bộ lộ trình">
         <i class="fa-solid fa-crosshairs"></i>
       </button>
-      <button type="button" class="w-9 h-9 bg-white rounded-xl shadow-md flex items-center justify-center text-slate-700 hover:text-red-600 text-xs transition" title="Lớp bản đồ giao thông">
-        <i class="fa-solid fa-layer-group"></i>
-      </button>
     </div>
-
   </div>
 
-  <!-- 3. Thẻ Nổi Trạng Thái Di Chuyển & Ước Tính Thời Gian (Floating Live Card) -->
+  <!-- 3. Thẻ Nổi Trạng Thái Di Chuyển & Kênh Liên Lạc (Floating Info Card) -->
   <div class="p-3 bg-white border-t border-slate-200 rounded-t-3xl shadow-2xl -mt-4 relative z-20 space-y-3">
     
     <!-- ETA (Thời gian dự kiến đến) -->
@@ -111,72 +105,153 @@
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <span class="text-base font-extrabold text-slate-800">Dự kiến ~5 phút</span>
-            <span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
-              Đang tới
+            <span class="text-base font-extrabold text-slate-900">Dự kiến ~{{ eta_minutes }} phút</span>
+            <span class="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              {{ rescue_req.get_status_display|default:"Đang di chuyển tới" }}
             </span>
           </div>
-          <p class="text-[11px] text-slate-500">Thợ đang di chuyển trên đường Hoàng Thị Loan</p>
+          <p class="text-[11px] text-slate-500">Ca #{{ rescue_id }} • {{ rescue_req.issue_display|default:"Sự cố giao thông" }}</p>
         </div>
       </div>
 
-      <!-- Nút chia sẻ vị trí cho người thân -->
-      <button type="button" class="text-slate-400 hover:text-slate-600 p-2" title="Chia sẻ theo dõi cho người thân">
+      <!-- Nút chia sẻ vị trí -->
+      <button type="button" onclick="navigator.clipboard.writeText(window.location.href); alert('Đã sao chép liên kết theo dõi lộ trình real-time!');" class="text-slate-400 hover:text-slate-600 p-2" title="Chia sẻ theo dõi cho người thân">
         <i class="fa-solid fa-share-nodes text-base"></i>
       </button>
     </div>
 
-    <!-- Thông tin người hỗ trợ & Xe -->
+    <!-- Thông tin Đối tác (Tùy theo người xem là Nạn nhân hay Thợ) -->
+    {% if is_victim %}
+    <!-- Người xem là NẠN NHÂN: Hiển thị thông tin Thợ đang đến cứu -->
     <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <img 
-          src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop&q=80" 
+          src="{{ helper_profile.avatar_url|default:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' }}" 
           alt="Avatar Thợ" 
-          class="w-10 h-10 rounded-full object-cover border border-red-500"
+          class="w-10 h-10 rounded-full object-cover border-2 border-emerald-500"
         />
         <div>
-          <h3 class="font-bold text-slate-800 text-xs">Nguyễn Văn Hùng</h3>
-          <p class="text-[10px] text-slate-500">Xe Wave Alpha đỏ • <strong class="text-slate-700">43-C1 123.45</strong></p>
+          <div class="flex items-center gap-1">
+            <h3 class="font-bold text-slate-800 text-xs">{{ helper_name }}</h3>
+            <span class="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Thợ cứu hộ</span>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-0.5">{{ helper_vehicle }}</p>
         </div>
       </div>
 
-      <!-- Cặp nút Gọi & Nhắn tin nhanh -->
+      <!-- Kênh Liên lạc: Cặp nút Gọi & Nhắn tin nhanh -->
       <div class="flex items-center gap-1.5">
         <a 
-          href="tel:0905123456" 
+          href="tel:{{ helper_phone }}" 
           class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-xs transition"
-          title="Gọi điện thoại"
+          title="Gọi điện thoại trực tiếp cho thợ"
         >
           <i class="fa-solid fa-phone"></i>
         </a>
         <a 
-          href="{% url 'support_chat' %}" 
+          href="{% url 'support_chat' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% endif %}" 
           class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center text-xs transition"
           title="Nhắn tin trao đổi"
         >
-          <i class="fa-solid fa-comment-dots"></i>
+          <i class="fa-regular fa-comment-dots text-sm"></i>
         </a>
       </div>
     </div>
 
-    <!-- Cụm nút hành động hoàn tất & báo cáo -->
-    <div class="flex items-center gap-2 pt-1">
-      <a 
-        href="{% url 'rating_feedback' %}" 
-        class="flex-1 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition"
-      >
-        <i class="fa-solid fa-circle-check"></i>
-        <span>Đã Gặp Thợ & Hoàn Tất</span>
-      </a>
-
-      <button 
-        type="button" 
-        onclick="confirm('Bạn có chắc muốn báo cáo khẩn cấp hoặc hủy ca cứu hộ này?')" 
-        class="px-3 py-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold transition"
-      >
-        Hủy Ca
-      </button>
+    <!-- Thông báo tiến độ cho Nạn nhân -->
+    <div class="pt-1">
+      <div class="bg-white border border-slate-200 rounded-xl p-2.5 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+          <span class="text-slate-600 font-medium text-[11px]">
+            {% if status == 'ACCEPTED' %}Thợ đã tiếp nhận ca và đang chuẩn bị xuất phát...
+            {% elif status == 'IN_PROGRESS' %}Thợ đang trên đường di chuyển tới chỗ bạn...
+            {% elif status == 'ARRIVED' %}Thợ đã đến vị trí! Vui lòng kiểm tra xe cùng thợ.
+            {% elif status == 'COMPLETED' %}Ca cứu hộ đã hoàn tất an toàn!{% endif %}
+          </span>
+        </div>
+        {% if status == 'COMPLETED' %}
+        <a href="{% url 'rating_feedback' %}?request_id={{ rescue_req.id }}" class="px-2.5 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-bold">
+          Đánh giá thợ
+        </a>
+        {% endif %}
+      </div>
     </div>
+
+    {% else %}
+    <!-- Người xem là THỢ CỨU HỘ: Hiển thị thông tin Nạn nhân cần cứu -->
+    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <img 
+          src="{{ victim_avatar|default:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80' }}" 
+          alt="Avatar Nạn nhân" 
+          class="w-10 h-10 rounded-full object-cover border-2 border-red-500"
+        />
+        <div>
+          <div class="flex items-center gap-1">
+            <h3 class="font-bold text-slate-800 text-xs">{{ victim_name }}</h3>
+            <span class="text-[9px] bg-red-100 text-red-800 font-bold px-1.5 py-0.2 rounded">Nạn nhân</span>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-0.5 truncate max-w-[170px]">{{ location_address }}</p>
+        </div>
+      </div>
+
+      <!-- Kênh Liên lạc: Cặp nút Gọi & Nhắn tin nhanh -->
+      <div class="flex items-center gap-1.5">
+        <a 
+          href="tel:{{ victim_phone }}" 
+          class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-xs transition"
+          title="Gọi điện thoại trực tiếp cho nạn nhân"
+        >
+          <i class="fa-solid fa-phone"></i>
+        </a>
+        <a 
+          href="{% url 'support_chat' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% endif %}" 
+          class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center text-xs transition"
+          title="Nhắn tin trao đổi"
+        >
+          <i class="fa-regular fa-comment-dots text-sm"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Cụm nút chuyển trạng thái lộ trình dành cho Thợ cứu hộ -->
+    {% if rescue_req %}
+    <div class="pt-1 space-y-2">
+      <div class="flex items-center gap-2">
+        {% if status == 'ACCEPTED' %}
+          <form method="POST" action="{% url 'update_request_status' rescue_req.id %}" class="flex-1">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="IN_PROGRESS">
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-red-600/30 flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-person-biking"></i>
+              <span>Thợ Bắt Đầu Di Chuyển</span>
+            </button>
+          </form>
+        {% elif status == 'IN_PROGRESS' %}
+          <form method="POST" action="{% url 'update_request_status' rescue_req.id %}" class="flex-1">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="ARRIVED">
+            <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-amber-600/30 flex items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-location-pin"></i>
+              <span>Thợ Đã Tới Hiện Trường</span>
+            </button>
+          </form>
+        {% endif %}
+
+        <!-- Nút Đã khắc phục & Hoàn tất ca cứu hộ -->
+        <form method="POST" action="{% url 'update_request_status' rescue_req.id %}" class="flex-1">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="COMPLETED">
+          <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Đã Xong & Hoàn Tất Ca</span>
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
 
   </div>
 
@@ -185,7 +260,76 @@
 
 {% block extra_js %}
 <script>
-  // Script giả lập cập nhật khoảng cách vị trí thời gian thực (Polling hoặc WebSocket)
-  console.log("SafeXe Live GPS Tracking initialized.");
+  let map, routeLine, victimMarker, helperMarker;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const mapEl = document.getElementById('realtimeMap');
+    if (!mapEl) return;
+
+    const vLat = parseFloat(mapEl.getAttribute('data-victim-lat')) || 16.0725;
+    const vLng = parseFloat(mapEl.getAttribute('data-victim-lng')) || 108.1520;
+    const hLat = parseFloat(mapEl.getAttribute('data-helper-lat')) || 16.0780;
+    const hLng = parseFloat(mapEl.getAttribute('data-helper-lng')) || 108.1580;
+    const vAddress = mapEl.getAttribute('data-victim-address') || 'Vị trí sự cố';
+    const hInfo = mapEl.getAttribute('data-helper-info') || 'Thợ cứu hộ';
+    const distVal = mapEl.getAttribute('data-distance') || '1.2';
+
+    const victimCoords = [vLat, vLng];
+    const helperCoords = [hLat, hLng];
+
+    // Khởi tạo bản đồ Leaflet
+    map = L.map('realtimeMap', {
+      zoomControl: false
+    }).setView(victimCoords, 14);
+
+    // Bản đồ nền OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Icon Người gặp nạn (Đỏ)
+    const victimIcon = L.divIcon({
+      className: 'custom-radar-marker',
+      html: '<div class="relative"><div class="pulse-ring"></div><div style="background:#ef4444; color:white; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 4px 6px rgba(0,0,0,0.3); font-size:14px;"><i class="fa-solid fa-person-falling-burst"></i></div></div>',
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+
+    // Icon Thợ cứu hộ (Xanh)
+    const helperIcon = L.divIcon({
+      className: 'custom-helper-marker',
+      html: '<div style="background:#2563eb; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 6px 12px rgba(37,99,235,0.4); font-size:16px;"><i class="fa-solid fa-motorcycle"></i></div>',
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
+    });
+
+    // Tạo Marker vị trí
+    victimMarker = L.marker(victimCoords, { icon: victimIcon })
+      .addTo(map)
+      .bindPopup("<b>Vị trí gặp sự cố (Bạn)</b><br>" + vAddress);
+
+    helperMarker = L.marker(helperCoords, { icon: helperIcon })
+      .addTo(map)
+      .bindPopup("<b>" + hInfo + "</b><br>Khoảng cách: " + distVal + " km");
+
+    // Tuyến đường dẫn đường giả lập nối giữa 2 vị trí
+    routeLine = L.polyline([helperCoords, victimCoords], {
+      color: '#ef4444',
+      weight: 4,
+      opacity: 0.85,
+      dashArray: '8, 8'
+    }).addTo(map);
+
+    // Tự động căn tâm bản đồ vừa vặn cả 2 vị trí
+    centerRoute();
+  });
+
+  function centerRoute() {
+    if (map && victimMarker && helperMarker) {
+      const group = new L.featureGroup([victimMarker, helperMarker]);
+      map.fitBounds(group.getBounds().pad(0.3));
+    }
+  }
 </script>
 {% endblock %}
