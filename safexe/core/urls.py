@@ -31,6 +31,7 @@ urlpatterns = [
     # 6. Đánh giá chất lượng dịch vụ
     path("rescue/rating/", views.rating_feedback_view, name="rating_feedback"),
 
-    # 7. API Polling thời gian thực
+    # 7. API Polling thời gian thực & Cập nhật GPS
     path("api/request-status/<int:request_id>/", views.api_request_status, name="api_request_status"),
+    path("api/update-my-location/", views.api_update_my_location, name="api_update_my_location"),
 ]

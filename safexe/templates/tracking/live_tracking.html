@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}SafeXe - Bản Đồ Dẫn Đường Real-Time & Theo Dõi Trạng Thái{% endblock %}
+{% block title %}SafeXe - Bản Đồ Định Vị GPS & Theo Dõi Trạng Thái{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -24,6 +24,28 @@
     animation: pulsate 1.8s ease-out infinite;
     opacity: 0;
   }
+  .pulse-ring-emerald {
+    border: 3px solid #10b981;
+    border-radius: 50%;
+    height: 38px;
+    width: 38px;
+    position: absolute;
+    left: -19px;
+    top: -19px;
+    animation: pulsate 1.8s ease-out infinite;
+    opacity: 0;
+  }
+  .pulse-ring-blue {
+    border: 3px solid #2563eb;
+    border-radius: 50%;
+    height: 38px;
+    width: 38px;
+    position: absolute;
+    left: -19px;
+    top: -19px;
+    animation: pulsate 1.8s ease-out infinite;
+    opacity: 0;
+  }
   @keyframes pulsate {
     0% { transform: scale(0.1); opacity: 0; }
     50% { opacity: 1; }
@@ -34,6 +56,11 @@
 
 {% block content %}
 <div class="flex-1 flex flex-col relative bg-slate-100">
+
+  {% if has_active_rescue %}
+  <!-- ======================================================== -->
+  <!-- TRƯỜNG HỢP 1: CÓ CA CỨU HỘ ĐANG DIỄN RA (ACTIVE)        -->
+  <!-- ======================================================== -->
 
   <!-- 1. Thanh Tiến Trình Cứu Hộ (Stepper 4 Bước theo trạng thái thực) -->
   <div class="bg-white border-b border-slate-200 px-4 py-2.5 shadow-sm z-10">
@@ -64,10 +91,15 @@
     </div>
   </div>
 
-  <!-- 2. Bản Đồ Lộ Trình Dẫn Đường Real-Time (Leaflet.js + OpenStreetMap) -->
+  <!-- 2. Bản Đồ Lộ Trình Dẫn Đường Real-Time 2 Chiều -->
   <div class="relative w-full overflow-hidden shrink-0 h-[340px]">
     <div 
       id="realtimeMap"
+      data-has-active="true"
+      data-my-lat="{{ my_lat }}"
+      data-my-lng="{{ my_lng }}"
+      data-my-name="{{ my_name }}"
+      data-is-rescuer="{{ is_rescuer|yesno:'true,false' }}"
       data-victim-lat="{{ victim_lat|default:16.0725 }}"
       data-victim-lng="{{ victim_lng|default:108.1520 }}"
       data-helper-lat="{{ helper_lat|default:16.0780 }}"
@@ -86,7 +118,7 @@
       </div>
     </div>
 
-    <!-- Nút điều khiển định vị lại -->
+    <!-- Nút điều khiển căn chỉnh lộ trình -->
     <div class="absolute top-3 right-3 flex flex-col gap-2 z-[400]">
       <button type="button" onclick="centerRoute()" class="w-9 h-9 bg-white rounded-xl shadow-md flex items-center justify-center text-slate-700 hover:text-red-600 text-xs transition" title="Căn chỉnh toàn bộ lộ trình">
         <i class="fa-solid fa-crosshairs"></i>
@@ -94,7 +126,7 @@
     </div>
   </div>
 
-  <!-- 3. Thẻ Nổi Trạng Thái Di Chuyển & Kênh Liên Lạc (Floating Info Card) -->
+  <!-- 3. Thẻ Nổi Trạng Thái Di Chuyển & Kênh Liên Lạc Khi Đang Trong Ca -->
   <div class="p-3 bg-white border-t border-slate-200 rounded-t-3xl shadow-2xl -mt-4 relative z-20 space-y-3">
     
     <!-- ETA (Thời gian dự kiến đến) -->
@@ -120,7 +152,7 @@
       </button>
     </div>
 
-    <!-- Thông tin Đối tác (Tùy theo người xem là Nạn nhân hay Thợ) -->
+    <!-- Thông tin Đối tác -->
     {% if is_victim %}
     <!-- Người xem là NẠN NHÂN: Hiển thị thông tin Thợ đang đến cứu -->
     <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between">
@@ -139,7 +171,7 @@
         </div>
       </div>
 
-      <!-- Kênh Liên lạc: Cặp nút Gọi & Nhắn tin nhanh -->
+      <!-- Kênh Liên lạc -->
       <div class="flex items-center gap-1.5">
         <a 
           href="tel:{{ helper_phone }}" 
@@ -166,15 +198,9 @@
           <span class="text-slate-600 font-medium text-[11px]">
             {% if status == 'ACCEPTED' %}Thợ đã tiếp nhận ca và đang chuẩn bị xuất phát...
             {% elif status == 'IN_PROGRESS' %}Thợ đang trên đường di chuyển tới chỗ bạn...
-            {% elif status == 'ARRIVED' %}Thợ đã đến vị trí! Vui lòng kiểm tra xe cùng thợ.
-            {% elif status == 'COMPLETED' %}Ca cứu hộ đã hoàn tất an toàn!{% endif %}
+            {% elif status == 'ARRIVED' %}Thợ đã đến vị trí! Vui lòng kiểm tra xe cùng thợ.{% endif %}
           </span>
         </div>
-        {% if status == 'COMPLETED' %}
-        <a href="{% url 'rating_feedback' %}?request_id={{ rescue_req.id }}" class="px-2.5 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-bold">
-          Đánh giá thợ
-        </a>
-        {% endif %}
       </div>
     </div>
 
@@ -196,7 +222,7 @@
         </div>
       </div>
 
-      <!-- Kênh Liên lạc: Cặp nút Gọi & Nhắn tin nhanh -->
+      <!-- Kênh Liên lạc -->
       <div class="flex items-center gap-1.5">
         <a 
           href="tel:{{ victim_phone }}" 
@@ -216,7 +242,6 @@
     </div>
 
     <!-- Cụm nút chuyển trạng thái lộ trình dành cho Thợ cứu hộ -->
-    {% if rescue_req %}
     <div class="pt-1 space-y-2">
       <div class="flex items-center gap-2">
         {% if status == 'ACCEPTED' %}
@@ -225,7 +250,7 @@
             <input type="hidden" name="status" value="IN_PROGRESS">
             <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-red-600/30 flex items-center justify-center gap-1.5 transition">
               <i class="fa-solid fa-person-biking"></i>
-              <span>Thợ Bắt Đầu Di Chuyển</span>
+              <span>Bắt Đầu Di Chuyển</span>
             </button>
           </form>
         {% elif status == 'IN_PROGRESS' %}
@@ -234,15 +259,16 @@
             <input type="hidden" name="status" value="ARRIVED">
             <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-amber-600/30 flex items-center justify-center gap-1.5 transition">
               <i class="fa-solid fa-location-pin"></i>
-              <span>Thợ Đã Tới Hiện Trường</span>
+              <span>Đã Tới Hiện Trường</span>
             </button>
           </form>
         {% endif %}
 
-        <!-- Nút Đã khắc phục & Hoàn tất ca cứu hộ -->
+        <!-- Nút Đã Xong & Hoàn Tất Ca Cứu Hộ -->
         <form method="POST" action="{% url 'update_request_status' rescue_req.id %}" class="flex-1">
           {% csrf_token %}
           <input type="hidden" name="status" value="COMPLETED">
+          <input type="hidden" name="next" value="live_tracking">
           <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-xs text-center shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition">
             <i class="fa-solid fa-circle-check"></i>
             <span>Đã Xong & Hoàn Tất Ca</span>
@@ -251,85 +277,385 @@
       </div>
     </div>
     {% endif %}
-    {% endif %}
 
   </div>
+
+  {% else %}
+  <!-- ======================================================== -->
+  <!-- TRƯỜNG HỢP 2: CA ĐÃ XONG / THỢ ĐÃ NHẤN HOÀN TẤT         -->
+  <!-- HOẶC KHÔNG CÓ CA NÀO -> CHỈ HIỆN VỊ TRÍ HIỆN TẠI         -->
+  <!-- ======================================================== -->
+
+  <!-- 1. Thanh Tiêu Đề Định Vị GPS Trực Tuyến -->
+  <div class="bg-white border-b border-slate-200 px-4 py-3 shadow-sm z-10 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <span class="relative flex h-3 w-3">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+      </span>
+      <div>
+        <h2 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-location-crosshairs text-emerald-600"></i>
+          Vị Trí Định Vị GPS Hiện Tại
+        </h2>
+        <p class="text-[10px] text-slate-400 font-medium">Bản đồ thời gian thực của người dùng đang đăng nhập</p>
+      </div>
+    </div>
+    <div>
+      {% if is_rescuer %}
+        <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+          <i class="fa-solid fa-motorcycle"></i> Thợ: {{ my_name }}
+        </span>
+      {% else %}
+        <span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+          <i class="fa-solid fa-user-shield"></i> {{ my_name }}
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 2. Bản Đồ Vị Trí Hiện Tại (Chỉ 1 Marker của Người Đang Đăng Nhập) -->
+  <div class="relative w-full overflow-hidden shrink-0 h-[420px]">
+    <div 
+      id="realtimeMap"
+      data-has-active="false"
+      data-my-lat="{{ my_lat }}"
+      data-my-lng="{{ my_lng }}"
+      data-my-name="{{ my_name }}"
+      data-my-role="{% if is_rescuer %}Thợ cứu hộ{% else %}Người dùng{% endif %}"
+      data-is-rescuer="{{ is_rescuer|yesno:'true,false' }}"
+      data-my-vehicle="{{ my_vehicle }}"
+    ></div>
+
+    <!-- Thẻ Tọa Độ GPS Hiện Tại Nổi Trên Bản Đồ -->
+    <div class="absolute top-3 left-3 bg-white/95 backdrop-blur-sm border border-slate-200 px-3.5 py-2 rounded-2xl shadow-lg text-xs font-bold text-slate-800 flex items-center gap-2.5 z-[400]">
+      <span class="w-2.5 h-2.5 rounded-full {% if is_rescuer %}bg-blue-600{% else %}bg-emerald-500{% endif %} animate-ping"></span>
+      <div>
+        <span class="text-[10px] text-slate-400 block font-normal leading-none">Vị trí của bạn ({% if is_rescuer %}Thợ cứu hộ{% else %}Người dùng{% endif %})</span>
+        <span id="coordDisplay" class="text-xs font-black text-slate-800 mt-0.5 block">{{ my_lat|floatformat:4 }}, {{ my_lng|floatformat:4 }}</span>
+      </div>
+    </div>
+
+    <!-- Cụm nút điều khiển bản đồ nổi góc phải -->
+    <div class="absolute top-3 right-3 flex flex-col gap-2 z-[400]">
+      <!-- Nút căn giữa vị trí -->
+      <button 
+        type="button" 
+        onclick="centerMyPosition()" 
+        class="w-10 h-10 bg-white rounded-xl shadow-md flex items-center justify-center text-slate-700 hover:text-emerald-600 text-sm transition" 
+        title="Căn giữa vị trí của bạn"
+      >
+        <i class="fa-solid fa-crosshairs"></i>
+      </button>
+
+      <!-- Nút lấy tọa độ GPS từ trình duyệt -->
+      <button 
+        type="button" 
+        id="btnGetGps"
+        onclick="requestCurrentLocation()" 
+        class="w-10 h-10 bg-emerald-600 text-white rounded-xl shadow-md flex items-center justify-center hover:bg-emerald-700 text-sm transition shadow-emerald-600/30" 
+        title="Định vị GPS thiết bị thực tế"
+      >
+        <i class="fa-solid fa-location-arrow"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- 3. Thẻ Thông Tin Hồ Sơ & Vị Trí Của Người Đang Đăng Nhập -->
+  <div class="p-4 bg-white border-t border-slate-200 rounded-t-3xl shadow-2xl -mt-4 relative z-20">
+    
+    <!-- Tiêu đề & Thông tin tài khoản -->
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0 flex-1">
+        <div class="w-11 h-11 rounded-2xl shrink-0 {% if is_rescuer %}bg-blue-100 text-blue-600{% else %}bg-emerald-100 text-emerald-600{% endif %} flex items-center justify-center text-xl font-bold">
+          {% if is_rescuer %}
+            <i class="fa-solid fa-motorcycle"></i>
+          {% else %}
+            <i class="fa-solid fa-location-dot"></i>
+          {% endif %}
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h3 class="text-sm font-extrabold text-slate-900 truncate">{{ my_name }}</h3>
+            {% if is_rescuer %}
+              <span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap">
+                <i class="fa-solid fa-wrench text-[9px]"></i> Thợ cứu hộ
+              </span>
+            {% else %}
+              <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap">
+                <i class="fa-solid fa-shield-halved text-[9px]"></i> Thành viên
+              </span>
+            {% endif %}
+          </div>
+          <p class="text-[11px] text-slate-500 mt-0.5 truncate">
+            {% if is_rescuer %}
+              {{ my_vehicle|default:"Xe máy cứu hộ lưu động" }} • SĐT: {{ my_phone }}
+            {% else %}
+              Tài khoản cá nhân • SĐT: {{ my_phone }}
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Huy hiệu định vị hoạt động không bao giờ xuống dòng -->
+      <div class="text-right shrink-0">
+        <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 whitespace-nowrap">
+          <i class="fa-solid fa-circle text-[7px] text-emerald-500 animate-pulse"></i> GPS Trực Tuyến
+        </span>
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  let map, routeLine, victimMarker, helperMarker;
+  let map, routeLine, victimMarker, helperMarker, myMarker, myCircle;
+
+  function parseCoord(val, defaultVal) {
+    if (!val) return defaultVal;
+    const str = String(val).replace(',', '.');
+    const num = parseFloat(str);
+    return isNaN(num) ? defaultVal : num;
+  }
 
   document.addEventListener("DOMContentLoaded", function () {
     const mapEl = document.getElementById('realtimeMap');
     if (!mapEl) return;
 
-    const vLat = parseFloat(mapEl.getAttribute('data-victim-lat')) || 16.0725;
-    const vLng = parseFloat(mapEl.getAttribute('data-victim-lng')) || 108.1520;
-    const hLat = parseFloat(mapEl.getAttribute('data-helper-lat')) || 16.0780;
-    const hLng = parseFloat(mapEl.getAttribute('data-helper-lng')) || 108.1580;
-    const vAddress = mapEl.getAttribute('data-victim-address') || 'Vị trí sự cố';
-    const hInfo = mapEl.getAttribute('data-helper-info') || 'Thợ cứu hộ';
-    const distVal = mapEl.getAttribute('data-distance') || '1.2';
+    const hasActive = mapEl.getAttribute('data-has-active') === 'true';
 
-    const victimCoords = [vLat, vLng];
-    const helperCoords = [hLat, hLng];
+    if (hasActive) {
+      // ==========================================
+      // CHẾ ĐỘ 1: CÓ CA CỨU HỘ ĐANG ACTIVE (2 ĐIỂM + LỘ TRÌNH)
+      // ==========================================
+      const vLat = parseCoord(mapEl.getAttribute('data-victim-lat'), 16.0725);
+      const vLng = parseCoord(mapEl.getAttribute('data-victim-lng'), 108.1520);
+      const hLat = parseCoord(mapEl.getAttribute('data-helper-lat'), 16.0780);
+      const hLng = parseCoord(mapEl.getAttribute('data-helper-lng'), 108.1580);
+      const vAddress = mapEl.getAttribute('data-victim-address') || 'Vị trí sự cố';
+      const hInfo = mapEl.getAttribute('data-helper-info') || 'Thợ cứu hộ';
+      const distVal = mapEl.getAttribute('data-distance') || '1.2';
 
-    // Khởi tạo bản đồ Leaflet
-    map = L.map('realtimeMap', {
-      zoomControl: false
-    }).setView(victimCoords, 14);
+      const victimCoords = [vLat, vLng];
+      const helperCoords = [hLat, hLng];
 
-    // Bản đồ nền OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
+      // Khởi tạo bản đồ Leaflet
+      map = L.map('realtimeMap', {
+        zoomControl: false
+      }).setView(victimCoords, 14);
 
-    // Icon Người gặp nạn (Đỏ)
-    const victimIcon = L.divIcon({
-      className: 'custom-radar-marker',
-      html: '<div class="relative"><div class="pulse-ring"></div><div style="background:#ef4444; color:white; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 4px 6px rgba(0,0,0,0.3); font-size:14px;"><i class="fa-solid fa-person-falling-burst"></i></div></div>',
-      iconSize: [34, 34],
-      iconAnchor: [17, 17]
-    });
+      // Lớp nền bản đồ OpenStreetMap
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
 
-    // Icon Thợ cứu hộ (Xanh)
-    const helperIcon = L.divIcon({
-      className: 'custom-helper-marker',
-      html: '<div style="background:#2563eb; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 6px 12px rgba(37,99,235,0.4); font-size:16px;"><i class="fa-solid fa-motorcycle"></i></div>',
-      iconSize: [38, 38],
-      iconAnchor: [19, 19]
-    });
+      // Icon Nạn nhân (Đỏ)
+      const victimIcon = L.divIcon({
+        className: 'custom-radar-marker',
+        html: '<div class="relative"><div class="pulse-ring"></div><div style="background:#ef4444; color:white; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 4px 6px rgba(0,0,0,0.3); font-size:14px;"><i class="fa-solid fa-person-falling-burst"></i></div></div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
+      });
 
-    // Tạo Marker vị trí
-    victimMarker = L.marker(victimCoords, { icon: victimIcon })
-      .addTo(map)
-      .bindPopup("<b>Vị trí gặp sự cố (Bạn)</b><br>" + vAddress);
+      // Icon Thợ cứu hộ (Xanh)
+      const helperIcon = L.divIcon({
+        className: 'custom-helper-marker',
+        html: '<div style="background:#2563eb; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 6px 12px rgba(37,99,235,0.4); font-size:16px;"><i class="fa-solid fa-motorcycle"></i></div>',
+        iconSize: [38, 38],
+        iconAnchor: [19, 19]
+      });
 
-    helperMarker = L.marker(helperCoords, { icon: helperIcon })
-      .addTo(map)
-      .bindPopup("<b>" + hInfo + "</b><br>Khoảng cách: " + distVal + " km");
+      victimMarker = L.marker(victimCoords, { icon: victimIcon })
+        .addTo(map)
+        .bindPopup("<b>Vị trí gặp sự cố</b><br>" + vAddress);
 
-    // Tuyến đường dẫn đường giả lập nối giữa 2 vị trí
-    routeLine = L.polyline([helperCoords, victimCoords], {
-      color: '#ef4444',
-      weight: 4,
-      opacity: 0.85,
-      dashArray: '8, 8'
-    }).addTo(map);
+      helperMarker = L.marker(helperCoords, { icon: helperIcon })
+        .addTo(map)
+        .bindPopup("<b>" + hInfo + "</b><br>Khoảng cách: " + distVal + " km");
 
-    // Tự động căn tâm bản đồ vừa vặn cả 2 vị trí
-    centerRoute();
+      routeLine = L.polyline([helperCoords, victimCoords], {
+        color: '#ef4444',
+        weight: 4,
+        opacity: 0.85,
+        dashArray: '8, 8'
+      }).addTo(map);
+
+      centerRoute();
+
+    } else {
+      // ==========================================
+      // CHẾ ĐỘ 2: KHÔNG CÓ CA ACTIVE / CA ĐÃ HOÀN TẤT
+      // CHỈ HIỂN THỊ DUY NHẤT VỊ TRÍ CỦA NGƯỜI ĐANG ĐĂNG NHẬP
+      // ==========================================
+      const myLat = parseCoord(mapEl.getAttribute('data-my-lat'), 16.0748);
+      const myLng = parseCoord(mapEl.getAttribute('data-my-lng'), 108.1499);
+      const isRescuer = mapEl.getAttribute('data-is-rescuer') === 'true';
+
+      const myCoords = [myLat, myLng];
+
+      map = L.map('realtimeMap', {
+        zoomControl: false
+      }).setView(myCoords, 15);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      // Icon đặc trưng cho Người Đang Đăng Nhập
+      let markerHtml = '';
+      if (isRescuer) {
+        markerHtml = `
+          <div class="relative">
+            <div class="pulse-ring-blue"></div>
+            <div style="background:#2563eb; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2.5px solid white; box-shadow:0 6px 12px rgba(37,99,235,0.45); font-size:16px;">
+              <i class="fa-solid fa-motorcycle"></i>
+            </div>
+          </div>
+        `;
+      } else {
+        markerHtml = `
+          <div class="relative">
+            <div class="pulse-ring-emerald"></div>
+            <div style="background:#10b981; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2.5px solid white; box-shadow:0 6px 12px rgba(16,185,129,0.45); font-size:16px;">
+              <i class="fa-solid fa-user-check"></i>
+            </div>
+          </div>
+        `;
+      }
+
+      const myIcon = L.divIcon({
+        className: 'custom-radar-marker',
+        html: markerHtml,
+        iconSize: [38, 38],
+        iconAnchor: [19, 19]
+      });
+
+      // Tạo marker vị trí duy nhất, không hiện popup che khuất
+      myMarker = L.marker(myCoords, { icon: myIcon }).addTo(map);
+
+      // Vòng tròn thể hiện bán kính phủ sóng GPS hiện tại
+      myCircle = L.circle(myCoords, {
+        color: isRescuer ? '#2563eb' : '#10b981',
+        fillColor: isRescuer ? '#3b82f6' : '#34d399',
+        fillOpacity: 0.12,
+        weight: 1.5,
+        radius: 180
+      }).addTo(map);
+    }
   });
 
+  // Căn chỉnh cả 2 điểm khi có ca active
   function centerRoute() {
     if (map && victimMarker && helperMarker) {
       const group = new L.featureGroup([victimMarker, helperMarker]);
       map.fitBounds(group.getBounds().pad(0.3));
     }
+  }
+
+  // Căn giữa vị trí của tôi khi không có ca active
+  function centerMyPosition() {
+    if (map && myMarker) {
+      const latlng = myMarker.getLatLng();
+      map.setView(latlng, 16, { animate: true });
+    }
+  }
+
+  // Lấy vị trí GPS thiết bị thực tế từ trình duyệt và lưu vào hồ sơ
+  function requestCurrentLocation() {
+    const btn = document.getElementById('btnGetGps');
+    if (!navigator.geolocation) {
+      alert("Trình duyệt của bạn không hỗ trợ định vị Geolocation.");
+      return;
+    }
+
+    if (btn) {
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-location-arrow"></i>';
+        }
+
+        // Cập nhật vị trí trên bản đồ
+        if (myMarker && map) {
+          const newCoords = [lat, lng];
+          myMarker.setLatLng(newCoords);
+          if (myCircle) {
+            myCircle.setLatLng(newCoords);
+          }
+          map.setView(newCoords, 16, { animate: true });
+
+          const coordDisplay = document.getElementById('coordDisplay');
+          if (coordDisplay) {
+            coordDisplay.innerText = lat.toFixed(4) + ', ' + lng.toFixed(4);
+          }
+        }
+
+        // Gửi cập nhật vị trí lên server qua API
+        fetch('/api/update-my-location/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            latitude: lat,
+            longitude: lng
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            alert("Đã cập nhật vị trí GPS thiết bị của bạn thành công!");
+          }
+        })
+        .catch(err => {
+          console.warn("Không thể lưu GPS lên máy chủ:", err);
+        });
+      },
+      function (error) {
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-location-arrow"></i>';
+        }
+        let msg = "Không thể lấy vị trí GPS hiện tại.";
+        if (error.code === 1) {
+          msg = "Vui lòng cho phép quyền truy cập vị trí trong trình duyệt của bạn.";
+        }
+        alert(msg);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  }
+
+  // Hàm hỗ trợ lấy CSRF token từ cookie
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
   }
 </script>
 {% endblock %}

@@ -1,129 +1,78 @@
 {% extends 'base.html' %}
 
-{% block title %}SafeXe - Trao Đổi & Thống Nhất Phương Án{% endblock %}
+{% block title %}SafeXe - Kênh Trao Đổi Cứu Hộ{% endblock %}
 
 {% block content %}
 <div class="flex-1 flex flex-col bg-slate-50 min-h-0">
 
-  <!-- 1. Thanh tóm tắt thông tin ca cứu hộ & Huy hiệu Riêng tư 1-1 -->
-  <div class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shadow-sm">
-    <div>
-      <div class="flex items-center gap-1.5">
-        <span class="font-extrabold text-slate-900 text-xs">Ca #{{ rescue_id }}</span>
-        <span class="{% if rescue_req.status == 'ACCEPTED' or rescue_req.status == 'IN_PROGRESS' %}bg-emerald-100 text-emerald-800 border-emerald-300{% elif rescue_req.status == 'PENDING' %}bg-amber-100 text-amber-800 border-amber-300{% else %}bg-slate-100 text-slate-700 border-slate-200{% endif %} text-[10px] font-bold px-2 py-0.5 rounded-full border">
-          {{ rescue_status }}
-        </span>
+  {% if view_mode == 'detail' %}
+  <!-- ======================================================== -->
+  <!-- CHẾ ĐỘ 1: XEM CHI TIẾT CUỘC TRÒ CHUYỆN  -->
+  <!-- ======================================================== -->
+
+  <!-- 1. Thanh tiêu đề phòng chat (có nút Trở về danh sách Messenger) -->
+  <div class="bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between shadow-sm shrink-0">
+    <div class="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+      <!-- Nút quay lại danh sách cuộc trò chuyện -->
+      <a 
+        href="{% url 'support_chat' %}" 
+        class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-sm transition shrink-0" 
+        title="Quay lại danh sách tin nhắn"
+      >
+        <i class="fa-solid fa-chevron-left"></i>
+      </a>
+
+      <!-- Avatar & Tên đối tác -->
+      <div class="relative shrink-0">
+        <img 
+          src="{{ counterpart_avatar|default:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' }}" 
+          alt="Avatar" 
+          class="w-9 h-9 rounded-full object-cover border"
+        />
+        <span class="absolute bottom-0 right-0 bg-emerald-500 w-2.5 h-2.5 rounded-full border-2 border-white"></span>
       </div>
-      <p class="text-[11px] text-slate-500 truncate max-w-[220px] mt-0.5">
-        <i class="fa-solid fa-location-dot text-red-500 text-[10px]"></i>
-        {{ location_address }}
-      </p>
+
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <h2 class="font-extrabold text-slate-900 text-xs truncate">{{ counterpart_name }}</h2>
+          {% if rescue_id %}
+            <span class="text-[9px] bg-slate-100 text-slate-700 font-bold px-1.5 py-0.2 rounded shrink-0">
+              Ca #{{ rescue_id }}
+            </span>
+          {% endif %}
+        </div>
+        <p class="text-[10px] text-slate-400 mt-0.5 truncate">
+          {{ counterpart_role }}{% if rescue_status %} • {{ rescue_status }}{% endif %}
+        </p>
+      </div>
     </div>
-    
-    <div class="flex items-center gap-1.5">
-      <a href="{% url 'live_tracking' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% endif %}" class="bg-red-50 text-red-600 hover:bg-red-100 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition">
-        <i class="fa-solid fa-map-location-dot"></i>
-        <span>Bản đồ GPS</span>
+
+    <!-- Cụm nút liên lạc & GPS -->
+    <div class="flex items-center gap-1.5 shrink-0">
+      <a 
+        href="tel:{{ counterpart_phone }}" 
+        class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-xs transition"
+        title="Gọi điện trực tiếp"
+      >
+        <i class="fa-solid fa-phone"></i>
+      </a>
+      <a 
+        href="{% url 'live_tracking' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% endif %}" 
+        class="w-8 h-8 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center text-xs transition"
+        title="Xem vị trí & bản đồ dẫn đường"
+      >
+        <i class="fa-solid fa-location-dot"></i>
       </a>
     </div>
   </div>
 
-
-
-  <!-- 2. Thẻ Thông Tin Đối Phương & Thống Nhất Phương Án / Chi Phí -->
-  <div class="p-3">
-    <div class="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <div class="relative">
-            <img 
-              src="{{ counterpart_avatar|default:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' }}" 
-              alt="Avatar" 
-              class="w-11 h-11 rounded-full object-cover border-2 {% if is_victim %}border-emerald-500{% else %}border-red-500{% endif %}"
-            />
-            <span class="absolute -bottom-1 -right-1 bg-emerald-500 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white">
-              <i class="fa-solid fa-check"></i>
-            </span>
-          </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <h2 class="font-extrabold text-slate-800 text-xs">{{ counterpart_name }}</h2>
-              <span class="text-[9px] bg-slate-100 text-slate-700 font-bold px-1.5 py-0.2 rounded">
-                {{ counterpart_role|default:"Đối tác" }}
-              </span>
-              {% if counterpart_rating %}
-              <span class="text-[10px] bg-amber-50 text-amber-700 font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5">
-                <i class="fa-solid fa-star text-amber-500"></i> {{ counterpart_rating }}
-              </span>
-              {% endif %}
-            </div>
-            <p class="text-[11px] text-slate-500 mt-0.5">
-              {{ counterpart_sub }} • Cách <strong>{{ distance_km }} km</strong>
-            </p>
-          </div>
-        </div>
-
-        <!-- Nút gọi điện thoại nhanh -->
-        <a 
-          href="tel:{{ counterpart_phone }}" 
-          class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center text-sm shadow-sm transition"
-          title="Gọi điện trao đổi trực tiếp"
-        >
-          <i class="fa-solid fa-phone"></i>
-        </a>
-      </div>
-
-      <!-- Nút hành động chấp nhận/từ chối -->
-      <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-end">
-
-        <!-- Nếu ca đang PENDING: Thợ thấy nút Nhận/Từ chối, Nạn nhân thấy trạng thái chờ -->
-        {% if rescue_req and rescue_req.status == 'PENDING' %}
-          {% if is_victim %}
-          <div class="flex items-center gap-1.5">
-            <span class="bg-amber-50 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1">
-              <i class="fa-solid fa-radar animate-spin text-amber-600"></i> Đang chờ thợ nhận ca...
-            </span>
-            <form method="POST" action="{% url 'cancel_request' rescue_req.id %}" onsubmit="return confirm('Bạn có chắc chắn muốn hủy yêu cầu cứu hộ này?');">
-              {% csrf_token %}
-              <button type="submit" class="px-2 py-1 rounded-lg border border-slate-300 text-slate-500 text-[10px] font-medium hover:bg-slate-100 transition">
-                Hủy ca
-              </button>
-            </form>
-          </div>
-          {% else %}
-          <div class="flex items-center gap-1.5">
-            <form method="POST" action="{% url 'reject_request' rescue_req.id %}">
-              {% csrf_token %}
-              <button type="submit" class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-600 text-[11px] font-semibold hover:bg-slate-100 transition">
-                Từ chối
-              </button>
-            </form>
-            <form method="POST" action="{% url 'accept_request' rescue_req.id %}">
-              {% csrf_token %}
-              <button type="submit" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-md shadow-emerald-600/30 flex items-center gap-1 transition">
-                <i class="fa-solid fa-circle-check"></i>
-                <span>Chấp Nhận</span>
-              </button>
-            </form>
-          </div>
-          {% endif %}
-        {% else %}
-        <a href="{% url 'live_tracking' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% endif %}" class="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-md shadow-red-600/30 flex items-center gap-1 transition">
-          <i class="fa-solid fa-route"></i>
-          <span>Xem Lộ Trình Di Chuyển</span>
-        </a>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <!-- 3. Khu vực Tin nhắn trao đổi (Live Chat Box) -->
+  <!-- 2. Khu vực tin nhắn trao đổi (Live Chat Box) -->
   <div class="flex-1 overflow-y-auto p-3 space-y-3" id="chatContainer">
     
-    <!-- Tin nhắn mốc hệ thống -->
+    <!-- Mốc thời gian bắt đầu ca -->
     <div class="text-center my-1">
       <span class="bg-slate-200/80 text-slate-600 text-[10px] px-3 py-1 rounded-full font-medium">
-        Hệ thống SafeXe đã kết nối phòng trao đổi cho ca #{{ rescue_id }}
+        {% if rescue_id %}Cuộc trao đổi cứu hộ cho ca #{{ rescue_id }}{% else %}Cuộc trao đổi cứu hộ trực tiếp{% endif %}
       </span>
     </div>
 
@@ -134,6 +83,13 @@
           <div>
             <div class="bg-red-600 text-white rounded-2xl rounded-tr-none p-2.5 text-xs shadow-sm leading-relaxed">
               {{ msg.message }}
+              {% if "/rescue/rating/" in msg.message and is_victim %}
+                <div class="mt-2.5 pt-2 border-t border-red-500/40">
+                  <a href="{% url 'rating_feedback' %}?request_id={{ msg.request.id }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold rounded-xl text-[11px] shadow transition active:scale-95">
+                    <i class="fa-solid fa-star text-amber-600"></i> Đánh giá thợ ngay
+                  </a>
+                </div>
+              {% endif %}
             </div>
             <span class="text-[9px] text-slate-400 mt-0.5 mr-1 text-right block">{{ msg.created_at|date:"H:i" }}</span>
           </div>
@@ -148,46 +104,45 @@
             <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none p-2.5 text-xs text-slate-800 shadow-sm leading-relaxed">
               <strong class="text-[10px] text-slate-400 block mb-0.5">{{ msg.sender.get_full_name|default:msg.sender.username }}</strong>
               {{ msg.message }}
+              {% if "/rescue/rating/" in msg.message and is_victim %}
+                <div class="mt-2.5 pt-2 border-t border-slate-100">
+                  <a href="{% url 'rating_feedback' %}?request_id={{ msg.request.id }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-[11px] shadow-sm transition active:scale-95">
+                    <i class="fa-solid fa-star text-amber-200"></i> Đánh giá thợ ngay
+                  </a>
+                </div>
+              {% endif %}
             </div>
             <span class="text-[9px] text-slate-400 mt-0.5 ml-1 block">{{ msg.created_at|date:"H:i" }}</span>
           </div>
         </div>
       {% endif %}
     {% empty %}
-      <div class="text-center py-6 space-y-2">
-        <i class="fa-regular fa-comment-dots text-2xl text-slate-300"></i>
-        <p class="text-xs text-slate-500">Chưa có tin nhắn nào. Hãy gửi lời chào và mô tả chi tiết vị trí hoặc tình trạng xe để hai bên thống nhất phương án!</p>
+      <div class="text-center py-8 text-xs text-slate-400">
+        Chưa có tin nhắn nào trong cuộc trao đổi này.
       </div>
     {% endfor %}
 
   </div>
 
-  <!-- 4. Thanh nhập nội dung tin nhắn gửi đi -->
+  <!-- 3. Thanh nhập nội dung tin nhắn gửi đi -->
   <div class="bg-white border-t border-slate-200 p-2.5 shrink-0 z-10">
-    <form method="POST" action="{% url 'support_chat' %}{% if rescue_req %}?request_id={{ rescue_req.id }}{% if is_victim and rescuer_user and not rescue_req.helper %}&rescuer_id={{ rescuer_user.id }}{% endif %}{% endif %}" class="flex items-center gap-2">
+    <form method="POST" action="{% url 'support_chat' %}?user_id={{ counterpart_user.id }}{% if rescue_req %}&request_id={{ rescue_req.id }}{% endif %}" class="flex items-center gap-2">
       {% csrf_token %}
 
-      <!-- Nút chụp ảnh nhanh -->
-      <button type="button" onclick="alert('Đã bật quyền truy cập camera để chụp tình trạng xe!')" class="w-9 h-9 rounded-xl border border-slate-300 flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-slate-50 transition" title="Gửi ảnh sự cố">
-        <i class="fa-solid fa-camera text-sm"></i>
-      </button>
-
-      <!-- Ô nhập văn bản -->
       <div class="flex-1 bg-slate-100 rounded-xl px-3 py-2 flex items-center focus-within:bg-white focus-within:ring-2 focus-within:ring-red-500 transition">
         <input 
           type="text" 
           name="message_text" 
-          placeholder="Nhập tin nhắn trao đổi phương án..." 
+          placeholder="Nhập tin nhắn..." 
           required 
           autocomplete="off"
           class="w-full bg-transparent text-xs text-slate-800 focus:outline-none placeholder-slate-400"
         />
       </div>
 
-      <!-- Nút gửi tin nhắn -->
       <button 
         type="submit" 
-        class="w-9 h-9 rounded-xl bg-red-600 hover:bg-red-700 text-white flex items-center justify-center text-sm shadow-md shadow-red-600/30 active:scale-95 transition"
+        class="w-9 h-9 rounded-xl bg-red-600 hover:bg-red-700 text-white flex items-center justify-center text-sm shadow-md shadow-red-600/30 active:scale-95 transition shrink-0"
         title="Gửi"
       >
         <i class="fa-solid fa-paper-plane"></i>
@@ -195,12 +150,90 @@
     </form>
   </div>
 
+  {% else %}
+  <!-- ======================================================== -->
+  <!-- CHẾ ĐỘ 2: DANH SÁCH CÁC CUỘC TRÒ CHUYỆN (MESSENGER INBOX) -->
+  <!-- ======================================================== -->
+
+  <!-- Title trên cùng: CHỈ HIỂN THỊ "KÊNH TRAO ĐỔI CỨU HỘ" NHƯ 1 TITLE -->
+  <div class="bg-white border-b border-slate-200 px-4 py-3.5 shadow-sm shrink-0">
+    <h1 class="text-sm font-black text-slate-800 tracking-wider uppercase">
+      KÊNH TRAO ĐỔI CỨU HỘ
+    </h1>
+  </div>
+
+  {% if conversations %}
+  <!-- Danh sách các cuộc trò chuyện lưu trữ tương tự Messenger -->
+  <div class="flex-1 overflow-y-auto divide-y divide-slate-100 bg-white">
+    {% for conv in conversations %}
+      <a 
+        href="{% url 'support_chat' %}?user_id={{ conv.partner_id }}{% if conv.id %}&request_id={{ conv.id }}{% endif %}" 
+        class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 active:bg-slate-100 transition"
+      >
+        <!-- Avatar đối tác -->
+        <div class="relative shrink-0">
+          <img 
+            src="{{ conv.counterpart_avatar|default:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' }}" 
+            alt="Avatar" 
+            class="w-12 h-12 rounded-full object-cover border border-slate-200"
+          />
+          {% if conv.is_active %}
+            <span class="absolute bottom-0 right-0 bg-emerald-500 w-3 h-3 rounded-full border-2 border-white"></span>
+          {% endif %}
+        </div>
+
+        <!-- Cột thông tin cuộc hội thoại -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-1 mb-0.5">
+            <h3 class="font-bold text-slate-800 text-xs truncate">
+              {{ conv.counterpart_name }}
+            </h3>
+            <span class="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
+              {{ conv.last_time|date:"H:i" }}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-[11px] text-slate-500 truncate flex-1">
+              {% if conv.last_message_sender == current_user %}
+                <span class="text-slate-700 font-medium">Bạn: </span>
+              {% endif %}
+              {{ conv.last_message }}
+            </p>
+
+            <!-- Badge trạng thái ca -->
+            {% if conv.code %}
+              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap
+                {% if conv.status == 'COMPLETED' %}bg-slate-100 text-slate-600
+                {% elif conv.status == 'IN_PROGRESS' or conv.status == 'ACCEPTED' %}bg-emerald-100 text-emerald-700
+                {% elif conv.status == 'CANCELLED' %}bg-rose-50 text-rose-600
+                {% else %}bg-amber-100 text-amber-700{% endif %}">
+                #{{ conv.code }} • {{ conv.status_display }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Khi chưa có cuộc trao đổi nào: CHỈ HIỂN THỊ "Không có cuộc trao đổi nào đang diễn ra", XOÁ HẾT THỨ THỪA -->
+  <div class="flex-1 flex items-center justify-center p-6 text-center">
+    <p class="text-sm font-medium text-slate-500">
+      Không có cuộc trao đổi nào đang diễn ra
+    </p>
+  </div>
+  {% endif %}
+
+  {% endif %}
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // Tự cuộn xuống đáy tin nhắn
+  // Tự cuộn xuống đáy tin nhắn nếu đang ở phòng chat chi tiết
   const chatBox = document.getElementById('chatContainer');
   if (chatBox) {
     chatBox.scrollTop = chatBox.scrollHeight;
